@@ -7,11 +7,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 import zwoasi as asi
 
-try:
-    asi.init(r"C:\Users\peg20\Documents\ASI SDK\lib\x64\ASICamera2.dll")
-except Exception as e:
-    asi.init(r"E:\Philip\Documents\ASI SDK\lib\x64\ASICamera2.dll")
-
+asi.init(r"ASI SDK\lib\x64\ASICamera2.dll")
 
 class FrameCaptureThread(QThread):
     frame_captured = Signal(

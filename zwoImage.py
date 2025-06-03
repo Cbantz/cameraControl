@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, QTimer, QPoint, QRect, QSize
 from PySide6.QtGui import QImage, QPixmap, QPainter, QPen
 import zwoasi as asi
 from skimage.draw import ellipse, disk
-asi.init(r"C:\Users\peg20\Documents\ASI SDK\lib\x64\ASICamera2.dll")
+asi.init(r"ASI SDK\lib\x64\ASICamera2.dll")
 
 class ImageLabel(QLabel):
     def __init__(self, parent=None):
