@@ -7,7 +7,12 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 import zwoasi as asi
 
-asi.init(r"ASI SDK\lib\x64\ASICamera2.dll")
+# You will have to change this to direct it on your system
+try:
+    asi.init(r"C:\Users\bantz\OneDrive - University of Iowa\Work\Diffractometer\cameraControl\ASI SDK\lib\x64\ASICamera2.dll")
+except Exception as e:
+    asi.init(r"E:\Philip\Documents\ASI SDK\lib\x64\ASICamera2.dll")
+
 
 class FrameCaptureThread(QThread):
     frame_captured = Signal(
@@ -65,14 +70,14 @@ class CameraControlGUI(QWidget):
         # self.timer.start(33)  # Update every ~33ms (~30 fps)
 
     def update_camera_properties(self):
-        camera_props = self.camera.get_camera_property()
-        print(f"Gain is now {self.camera.get_control_value(asi.ASI_GAIN)[0]}")
+        # camera_props = self.camera.get_camera_property()
+        # print(f"Gain is now {self.camera.get_control_value(asi.ASI_GAIN)[0]}")
 
-        self.bit_depth = camera_props["BitDepth"]
-        self.electron_per_adu = camera_props["ElecPerADU"]
-        self.pixel_size = camera_props["PixelSize"]
-        self.sensor_width_pix = camera_props["MaxWidth"]
-        self.sensor_height_pix = camera_props["MaxHeight"]
+        # self.bit_depth = camera_props["BitDepth"]
+        # self.electron_per_adu = camera_props["ElecPerADU"]
+        # self.pixel_size = camera_props["PixelSize"]
+        # self.sensor_width_pix = camera_props["MaxWidth"]
+        # self.sensor_height_pix = camera_props["MaxHeight"]
 
         try:
             self.camera_prop_bit_depth.setText(f"Bit Depth: {self.bit_depth}")
@@ -497,18 +502,18 @@ if __name__ == "__main__":
     # qdarktheme.setup_theme()
 
     # Initialize the camera (replace DummyCamera with actual camera class)
-    # camera = DummyCamera()
+    camera = DummyCamera()
 
-    camera = asi.Camera(0)
-    camera.set_control_value(asi.ASI_GAIN, 50)
-    exptime_seconds = 0.1
-    camera.set_control_value(asi.ASI_EXPOSURE, int(exptime_seconds * 1e6))
-    camera.set_control_value(asi.ASI_BANDWIDTHOVERLOAD, 80)
-    camera.set_image_type(asi.ASI_IMG_RAW16)
+    # camera = asi.Camera(0)
+    # camera.set_control_value(asi.ASI_GAIN, 50)
+    # exptime_seconds = 0.1
+    # camera.set_control_value(asi.ASI_EXPOSURE, int(exptime_seconds * 1e6))
+    # camera.set_control_value(asi.ASI_BANDWIDTHOVERLOAD, 80)
+    # camera.set_image_type(asi.ASI_IMG_RAW16)
 
-    camera.start_video_capture()
-    timeout = (camera.get_control_value(asi.ASI_EXPOSURE)[0] / 1000) * 2 + 500
-    camera.default_timeout = timeout
+    # camera.start_video_capture()
+    # timeout = (camera.get_control_value(asi.ASI_EXPOSURE)[0] / 1000) * 2 + 500
+    # camera.default_timeout = timeout
 
     # Create and show the GUI
     gui = CameraControlGUI(camera)
