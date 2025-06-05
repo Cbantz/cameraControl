@@ -2,6 +2,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtWidgets, QtCore, QtGui
 from astropy.io import fits
 import numpy as np
+from scipy.ndimage import center_of_mass
 
 
 # Start Qt app
@@ -60,6 +61,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.bg_set_button = pg.QtWidgets.QPushButton("Set Background")
         self.bg_set_button.pressed.connect(self.set_background)
 
+        # Create Centroid Button
+        self.centroid_button = pg.QtWidgets.QPushButton("Centroid")
+        self.centroid_button.pressed.connect(self.centroid)
+
 
         # Add Items to p1
         self.p1.addItem(self.hist)
@@ -96,7 +101,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
         # Add Rows to Data Panel Form
-        dp_form_layout.addRow("ROI Radius: ", self.dp_roi_size)
+        dp_form_layout.addRow("ROI Size: ", self.dp_roi_size)
         dp_form_layout.addRow("Energy Enclosed: ", self.pc_enc_label)
 
         # Arrange Widgets in Data Panel
@@ -119,6 +124,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.addToolBar(QtCore.Qt.TopToolBarArea, self.toolbar)
         self.toolbar.addWidget(file_button)
         self.toolbar.addWidget(self.bg_set_button)
+        self.toolbar.addWidget(self.centroid_button)
 
 
     
@@ -155,14 +161,26 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def main_image_changed(self):
+        '''
+        Runs any time the main image changes.
+        Updates total count measurement
+        '''
         print("change")
         self.total_counts = np.sum(self.main_imi.image)
+
+    def centroid(self):
+        '''
+        Sets the EE ROI to the scipy center of mass of the current displayed image
+        '''
+        com = center_of_mass(self.main_imi.image)
+        offset = self.ee_roi.size().x() / 2 #Adjust for 'pos' controlling the top left corner of the ROI
+        self.ee_roi.setPos((com[1]-offset, com[0] - offset))
     
     def set_background(self):
         '''
         Set the background count when button is pressed, remove button.
         '''
-        bg_region = self.bg_roi.getArrayRegion(self.main_imi.image, self.main_imi) # Get background region from bg_roi
+        bg_region = self.bg_roi.getArrayRegion(self.og_im_data, self.main_imi) # Get background region from bg_roi
         avg_bg_count = np.average(bg_region)
         # Adjust image data and display operational data
         bg_rem_data = self.og_im_data - avg_bg_count
@@ -229,10 +247,3 @@ win = MainWindow()
 win.show()
 
 app.exec()
-
-
-#BUG NOTES
-'''
-* Background toggles on and off effectively because it removes from og
-* 
-'''
