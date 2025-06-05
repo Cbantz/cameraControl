@@ -65,9 +65,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.centroid_button = pg.QtWidgets.QPushButton("Centroid")
         self.centroid_button.pressed.connect(self.centroid)
 
-
+        QtWidgets.QApplication.processEvents()
         # Add Items to p1
-        self.p1.addItem(self.hist)
+        self.p1.ci.addItem(self.hist, row=0, col=1)
 
         # Add Items to View
         self.view.addItem(self.main_imi)
@@ -129,6 +129,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     
     def load_image(self, filepath):
+        '''
+        Loads a new image after file is chosen. Arranges image and ROIs to match.
+        '''
+
         # Open Selected Image
         hdul = fits.open(filepath)
         header, data = hdul[0].header, hdul[0].data
@@ -144,7 +148,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # ROI parameters
         roi_size = 100
         roi_pos = ((y - roi_size) / 2, (x - roi_size) / 2)  # Centered position
-        roi_bounds = pg.QtCore.QRectF(pg.QtCore.QPoint(0, 0), pg.QtCore.QPoint(y, x))
+        roi_bounds = pg.QtCore.QRectF(pg.QtCore.QPoint(0, 0), pg.QtCore.QPoint(y, x)) #ROI bounded to the image size.
         
 
         # ROI centered in image
@@ -175,29 +179,40 @@ class MainWindow(QtWidgets.QMainWindow):
         com = center_of_mass(self.main_imi.image)
         offset = self.ee_roi.size().x() / 2 #Adjust for 'pos' controlling the top left corner of the ROI
         self.ee_roi.setPos((com[1]-offset, com[0] - offset))
+
+
+        ### This changes centroid to only use area inside ROI and repeats until it has found a good center. Useful for stars but maybe not for this.
+        # current_pos = self.ee_roi.pos()
+        # com_int = center_of_mass(self.ee_roi.getArrayRegion(self.main_imi.image, self.main_imi))
+        # new_pos = (current_pos[0] + com_int[1] - offset, current_pos[1] + com_int[0] - offset)
+        # dist = np.sqrt(np.square(new_pos[0] - current_pos[0]) + np.square(new_pos[1] - current_pos[1]))
+
+        # print(f"dist {dist}")
+        # if(dist >= 0.5):
+        #     self.ee_roi.setPos(new_pos)
+        #     self.centroid()
+        
     
     def set_background(self):
         '''
-        Set the background count when button is pressed, remove button.
+        Set the background count when set_background button is pressed.
         '''
         bg_region = self.bg_roi.getArrayRegion(self.og_im_data, self.main_imi) # Get background region from bg_roi
         avg_bg_count = np.average(bg_region)
         # Adjust image data and display operational data
         bg_rem_data = self.og_im_data - avg_bg_count
-        bg_rem_data[bg_rem_data<0] = 0
+        bg_rem_data[bg_rem_data<0] = 0 # Sets negative values to 0
         self.main_imi.setImage(bg_rem_data) # Remove average background count
         self.hist.autoHistogramRange()
         self.calculate_ee()
-        self.bg_set_button.setVisible(False)
 
 
     def bg_reg_changed(self):
         '''
-        Show 'set background' button and revert to original image
+        Revert to original image when background ROI is moved.
         '''
-        if np.array_equal(self.main_imi.image, self.og_im_data) == False:
+        if np.array_equal(self.main_imi.image, self.og_im_data) == False: # So it doesn't run every frame the box moves, only once.
             self.main_imi.setImage(self.og_im_data)
-            self.bg_set_button.setVisible(True)
             self.calculate_ee()
 
 
