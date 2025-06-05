@@ -16,6 +16,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
 
         self.setWindowTitle("FITS File Viewer")
+        
 
         # Create Main Grid
         self.win1 = QtWidgets.QWidget()
@@ -31,9 +32,12 @@ class MainWindow(QtWidgets.QMainWindow):
         # Create Original Image Data
         self.og_im_data = self.main_imi.image
         self.total_counts = 0
+        
 
         # Create HistogramLUTItem
-        self.hist = pg.HistogramLUTItem()
+        print("hello")
+        self.hist = pg.HistogramLUTItem(None)
+    
         self.hist.autoHistogramRange()
         
 
@@ -65,7 +69,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.centroid_button = pg.QtWidgets.QPushButton("Centroid")
         self.centroid_button.pressed.connect(self.centroid)
 
-        QtWidgets.QApplication.processEvents()
         # Add Items to p1
         self.p1.ci.addItem(self.hist, row=0, col=1)
 
