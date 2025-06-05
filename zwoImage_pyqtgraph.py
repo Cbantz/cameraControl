@@ -7,6 +7,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 import zwoasi as asi
 
+# You will have to change this to direct it on your system
 try:
     asi.init(r"C:\Users\bantz\OneDrive - University of Iowa\Work\Diffractometer\cameraControl\ASI SDK\lib\x64\ASICamera2.dll")
 except Exception as e:
