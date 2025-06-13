@@ -10,10 +10,25 @@ app = pg.mkQApp("Image Display")
 
 # Create main graphics window
 class MainWindow(QtWidgets.QMainWindow):
+
+    calculate_ee_req = QtCore.Signal(object, object, object) # Signal used when you need to calculate the EE in ee_roi
+
     def __init__(self):
         super().__init__()
 
-        
+
+        # Create Threads and workers 
+        #EE
+        self.ee_worker = Worker()
+        self.ee_thread = QtCore.QThread()
+        self.is_ee_thread_busy = False # Flag for when ee thread is processing
+        self.ee_worker.moveToThread(self.ee_thread)
+        self.ee_worker.resultReady.connect(self.display_ee) # Display results
+        self.is_ee_queued = False # Flag if there is a position that has not been updated for ee_roi
+        self.ee_worker.resultReady.connect(self.ee_thread_next_process) # Determine if a new position should be calculated and start it
+        self.ee_thread.started.connect(self.ee_worker.calculate_ee)
+        self.calculate_ee_req.connect(self.ee_worker.calculate_ee)
+        self.ee_thread.start()
 
         self.setWindowTitle("FITS File Viewer")
         
@@ -52,9 +67,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ee_roi.addScaleHandle((1, 0), (0.5, 0.5), lockAspect=True)
         self.ee_roi.addScaleHandle((0, 1), (0.5, 0.5), lockAspect=True)
         self.ee_roi.addScaleHandle((1, 1), (0.5, 0.5), lockAspect=True)
+        self.ee_roi.sigRegionChangeFinished
         
         self.ee_roi.sigRegionChanged.connect(self.calculate_ee)
         self.ee_roi.setVisible(False)
+
 
         # Create Background ROI
         self.bg_roi = pg.RectROI((0,0), size=300)
@@ -172,7 +189,6 @@ class MainWindow(QtWidgets.QMainWindow):
         Runs any time the main image changes.
         Updates total count measurement
         '''
-        print("change")
         self.total_counts = np.sum(self.main_imi.image)
 
     def centroid(self):
@@ -228,17 +244,48 @@ class MainWindow(QtWidgets.QMainWindow):
         file_name = pg.FileDialog.getOpenFileName(self, "Select Image", "", "FITS Files (*.fits *.fit);;CSV Files (*.csv)")[0]
         self.load_image(file_name)
 
+
+    
     def calculate_ee(self):
         '''
-        Subtracts average background from image, calculates percent of energy enclosed in EE_ROI
+        Asks ee thread to calculate encircled energy or sets is_ee_queued flag to True if thread is busy.
         '''
-        roi_region = self.ee_roi.getArrayRegion(self.main_imi.image, self.main_imi)
-        ee = np.sum(roi_region)
+        if self.is_ee_thread_busy:
+            self.is_ee_queued = True
+            return
+        
+        self.calculate_ee_req.emit(self.ee_roi, self.main_imi.image, self.main_imi)
+        self.is_ee_thread_busy = True
+
+        
+        
+    def ee_thread_next_process(self):
+        '''
+        Runs after each result from EE Thread. Determines if a new position needs to be run or not. Sets flags accordingly
+        '''
+        if self.is_ee_queued == True:
+            self.calculate_ee_req.emit(self.ee_roi, self.main_imi.image, self.main_imi)
+            self.is_ee_queued = False
+            return
+        else:
+            self.is_ee_thread_busy = False
+            return
+
+        
+        
+
+    def display_ee(self, ee):
+        '''
+        Updates display of EE after each calculation by EE Thread
+        '''
         self.dp_roi_size.setText(f"{int(self.ee_roi.size().x())}")
+
         if self.total_counts != 0:
             self.pc_enc_label.setText(f"{np.round(ee / self.total_counts, 4)} ({int(ee)}/{int(self.total_counts)})")
         else:
             self.pc_enc_label.setText(f"0 ({ee}/{self.total_counts})")
+        
+        
         
 
     def dp_roi_size_editing_finished(self):
@@ -247,6 +294,29 @@ class MainWindow(QtWidgets.QMainWindow):
         '''
         print("edited")
         self.ee_roi.setSize(float(self.dp_roi_size.text()), center=(0.5, 0.5))
+
+class Worker(QtCore.QObject):
+
+    resultReady = QtCore.Signal(float)
+
+    def __init__(self, parent = None):
+        super().__init__(parent)
+
+    @QtCore.Slot(object, object, object)
+    def calculate_ee(self, ee_roi, image, image_item):
+        '''
+        Calculates EE in the ee_roi, returns total count
+        '''
+        roi_region = ee_roi.getArrayRegion(image, image_item)
+        ee = np.sum(roi_region)
+        self.resultReady.emit(ee)
+        
+        
+
+
+    
+
+    
         
 
 
