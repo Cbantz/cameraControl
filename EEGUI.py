@@ -3,6 +3,8 @@ from pyqtgraph.Qt import QtWidgets, QtCore, QtGui
 from astropy.io import fits
 import numpy as np
 from scipy.ndimage import center_of_mass
+from photutils.aperture import CircularAperture
+import time
 
 
 # Start Qt app
@@ -19,7 +21,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Create Threads and workers 
         #EE
-        self.ee_worker = Worker()
+        self.ee_worker = EE_Worker()
         self.ee_thread = QtCore.QThread()
         self.is_ee_thread_busy = False # Flag for when ee thread is processing
         self.ee_worker.moveToThread(self.ee_thread)
@@ -38,7 +40,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.grid = QtWidgets.QGridLayout(self.win1)
 
         # Create Image Widget 
-        self.p1 = pg.GraphicsLayoutWidget()
+        self.main_plot = pg.GraphicsLayoutWidget()
 
         # Create Main Image
         self.main_imi = pg.ImageItem(image=np.array([[0]]), axisOrder='row-major')
@@ -47,17 +49,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # Create Original Image Data
         self.og_im_data = self.main_imi.image
         self.total_counts = 0
-        
-
-        # Create HistogramLUTItem
-        print("hello")
-        self.hist = pg.HistogramLUTItem(None)
-    
-        self.hist.autoHistogramRange()
-        
 
         # Create View
-        self.view = self.p1.addViewBox(invertY = True)
+        self.view = self.main_plot.addViewBox(row = 0, col = 0, invertY = True)
         self.view.setAspectLocked(True)
 
         # Create EE ROI
@@ -80,27 +74,42 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Create Background Select Button
         self.bg_set_button = pg.QtWidgets.QPushButton("Set Background")
-        self.bg_set_button.pressed.connect(self.set_background)
+        self.bg_set_button.clicked.connect(self.set_background)
 
         # Create Centroid Button
         self.centroid_button = pg.QtWidgets.QPushButton("Centroid")
         self.centroid_button.pressed.connect(self.centroid)
 
-        # Add Items to p1
-        self.p1.ci.addItem(self.hist, row=0, col=1)
+        # Create Plot Button
+        self.plot_button = QtWidgets.QPushButton("Plot")
+        self.plot_button.setCheckable(True)
+
+        # Create 50% button
+        self.half_button = QtWidgets.QPushButton("50%")
+        self.half_button.clicked.connect(self.half_energy)
+
 
         # Add Items to View
         self.view.addItem(self.main_imi)
         self.view.addItem(self.ee_roi)
         self.view.addItem(self.bg_roi)
+
+        # Create HistogramLUTItem
+        print("hello")
+        self.hist = pg.HistogramLUTItem()
+        self.hist.setImageItem(self.main_imi)
+        print("hello")
+
+        # Add Items to main_plot
+        self.main_plot.addItem(self.hist, row = 0, col = 1)
         
         # Create File Picker
         file_button = QtWidgets.QPushButton("Open File")
         file_button.clicked.connect(self.pick_file)
 
         # Create Data Panel
-        self.dp1 = pg.GraphicsLayoutWidget()
-        self.dp1grid=QtWidgets.QVBoxLayout(self.dp1)
+        self.dp = pg.GraphicsLayoutWidget()
+        self.dpgrid=QtWidgets.QVBoxLayout(self.dp)
 
         # Create Data Panel Form
         dp_form = QtWidgets.QWidget()
@@ -125,16 +134,25 @@ class MainWindow(QtWidgets.QMainWindow):
         dp_form_layout.addRow("Energy Enclosed: ", self.pc_enc_label)
 
         # Arrange Widgets in Data Panel
-        self.dp1grid.addWidget(dp_text, 1)
-        self.dp1grid.addWidget(dp_form, 10)
+        self.dpgrid.addWidget(dp_text, 1)
+        self.dpgrid.addWidget(dp_form, 10)
+
+        # Create EE Plot
+        self.p2 = pg.PlotWidget()
+        self.ee_pdi = pg.PlotDataItem()
+        self.ee_pdi.setData(np.array([0,1,2,3,4,5]), np.array([0,1,2,3,4,5]))
+        self.ee_plot_data = []
 
 
 
+
+        #self.p2.addItem(self.ee_pdi)
         
 
         # Arrange Widgets in Master Widget
-        self.grid.addWidget(self.p1, 0, 0, 2, 2)
-        self.grid.addWidget(self.dp1, 0, 3)
+        self.grid.addWidget(self.main_plot, 0, 0, 2, 2)
+        self.grid.addWidget(self.dp, 0, 2, 2, 1)
+        self.grid.addWidget(self.p2, 2, 0, 3, 1)
 
         # Set the central widget of the Window and add toolbar
         self.setCentralWidget(self.win1)
@@ -145,6 +163,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toolbar.addWidget(file_button)
         self.toolbar.addWidget(self.bg_set_button)
         self.toolbar.addWidget(self.centroid_button)
+        self.toolbar.addWidget(self.plot_button)
+        self.toolbar.addWidget(self.half_button)
 
 
     
@@ -234,8 +254,24 @@ class MainWindow(QtWidgets.QMainWindow):
             self.main_imi.setImage(self.og_im_data)
             self.calculate_ee()
 
-
+    def half_energy(self):
+        '''
+        Returns the radius from center of ee_roi necessary to encircle 50% energy of the ee_roi
+        '''
+        ee_array = self.ee_roi.getArrayRegion(self.main_imi.image, self.main_imi)
+        ee_full = np.sum(ee_array)
+        radius = np.ceil(self.ee_roi.size()[0]/2)
+        for r in range(1, int(radius)):
+            aperture = CircularAperture((np.shape(ee_array)[0]/2,np.shape(ee_array)[1]/2), r = r)
+            aperture_counts = aperture.do_photometry(ee_array, method='center')[0]
+            if aperture_counts / ee_full >= 0.5:
+                print(f"50% at r={r}")
+                return
         
+        print()
+        return
+
+
 
     def pick_file(self):
         '''
@@ -295,7 +331,13 @@ class MainWindow(QtWidgets.QMainWindow):
         print("edited")
         self.ee_roi.setSize(float(self.dp_roi_size.text()), center=(0.5, 0.5))
 
-class Worker(QtCore.QObject):
+
+    def closeEvent(self, event):
+        self.ee_thread.quit()
+        self.ee_thread.wait()
+        event.accept()
+
+class EE_Worker(QtCore.QObject):
 
     resultReady = QtCore.Signal(float)
 
@@ -310,6 +352,8 @@ class Worker(QtCore.QObject):
         roi_region = ee_roi.getArrayRegion(image, image_item)
         ee = np.sum(roi_region)
         self.resultReady.emit(ee)
+
+    
         
         
 
