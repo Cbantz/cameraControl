@@ -4,7 +4,10 @@ from astropy.io import fits
 import numpy as np
 from scipy.ndimage import center_of_mass
 from photutils.aperture import CircularAperture
+import zwoasi as asi
+import os
 import time
+
 
 
 # Start Qt app
@@ -13,7 +16,9 @@ app = pg.mkQApp("Image Display")
 # Create main graphics window
 class MainWindow(QtWidgets.QMainWindow):
 
+    #Create Signals
     calculate_ee_req = QtCore.Signal(object, object, object) # Signal used when you need to calculate the EE in ee_roi
+    start_live_view_sig = QtCore.Signal() # SIgnal to start live view from camera
 
     def __init__(self):
         super().__init__()
@@ -25,15 +30,26 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ee_thread = QtCore.QThread()
         self.is_ee_thread_busy = False # Flag for when ee thread is processing
         self.ee_worker.moveToThread(self.ee_thread)
-        self.ee_worker.resultReady.connect(self.display_ee) # Display results
+        self.ee_worker.ee_ready.connect(self.display_ee) # Display results of ee when done
         self.is_ee_queued = False # Flag if there is a position that has not been updated for ee_roi
-        self.ee_worker.resultReady.connect(self.ee_thread_next_process) # Determine if a new position should be calculated and start it
-        self.ee_thread.started.connect(self.ee_worker.calculate_ee)
-        self.calculate_ee_req.connect(self.ee_worker.calculate_ee)
+        self.ee_worker.ee_ready.connect(self.ee_thread_next_process) # Determine if a new position should be calculated and start it
+        self.calculate_ee_req.connect(self.ee_worker.calculate_ee) # Runs calculate_ee() whenever the ee_req signal is sent
         self.ee_thread.start()
+            # Half Encircled
+        self.ee_worker.half_ready.connect(self.display_half) # Display half-encircled when done
 
         self.setWindowTitle("FITS File Viewer")
         
+        #Camera
+        self.camera_worker = Camera_Worker()
+        self.camera_thread = QtCore.QThread()
+        self.camera_worker.moveToThread(self.camera_thread)
+        self.camera_worker.frame_ready.connect(self.load_new_frame)
+        self.camera_worker.frame_ready.connect(self.calculate_ee)
+        self.start_live_view_sig.connect(self.camera_worker.run_live)
+        self.camera_thread.start()
+
+
 
         # Create Main Grid
         self.win1 = QtWidgets.QWidget()
@@ -63,9 +79,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ee_roi.addScaleHandle((1, 1), (0.5, 0.5), lockAspect=True)
         self.ee_roi.sigRegionChangeFinished
         
-        self.ee_roi.sigRegionChanged.connect(self.calculate_ee)
+        self.ee_roi.sigRegionChanged.connect(self.ee_region_changed)
         self.ee_roi.setVisible(False)
 
+        # Create Half ROI
+        self.half_roi = pg.CircleROI((0,0), size=1)
+        self.half_roi.removeHandle(0)
 
         # Create Background ROI
         self.bg_roi = pg.RectROI((0,0), size=300)
@@ -84,14 +103,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plot_button = QtWidgets.QPushButton("Plot")
         self.plot_button.setCheckable(True)
 
-        # Create 50% button
-        self.half_button = QtWidgets.QPushButton("50%")
-        self.half_button.clicked.connect(self.half_energy)
+        # Create Camera button
+        self.live_cam_button = QtWidgets.QPushButton("Live Camera View")
+        self.live_cam_button.setCheckable(True)
+        self.live_cam_button.clicked.connect(self.live_button_clicked)
+
 
 
         # Add Items to View
         self.view.addItem(self.main_imi)
         self.view.addItem(self.ee_roi)
+        self.view.addItem(self.half_roi)
         self.view.addItem(self.bg_roi)
 
         # Create HistogramLUTItem
@@ -122,16 +144,19 @@ class MainWindow(QtWidgets.QMainWindow):
         # EE ROI Size Line Edit
         self.dp_roi_size = pg.QtWidgets.QLineEdit(f"{self.ee_roi.size().x()}")
         self.dp_roi_size.editingFinished.connect(self.dp_roi_size_editing_finished)
-        dp_roi_size_validator = QtGui.QIntValidator(bottom=0, top=400)
+        dp_roi_size_validator = QtGui.QIntValidator(bottom=0, top=1000)
         self.dp_roi_size.setValidator(dp_roi_size_validator)
 
         # Percent Enclosed
         self.pc_enc_label = pg.QtWidgets.QLabel()
 
+        #50% Radius
+        self.half_label = QtWidgets.QLabel()
 
         # Add Rows to Data Panel Form
         dp_form_layout.addRow("ROI Size: ", self.dp_roi_size)
         dp_form_layout.addRow("Energy Enclosed: ", self.pc_enc_label)
+        dp_form_layout.addRow("50% Enclosed Radius: ", self.half_label)
 
         # Arrange Widgets in Data Panel
         self.dpgrid.addWidget(dp_text, 1)
@@ -164,7 +189,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toolbar.addWidget(self.bg_set_button)
         self.toolbar.addWidget(self.centroid_button)
         self.toolbar.addWidget(self.plot_button)
-        self.toolbar.addWidget(self.half_button)
+        self.toolbar.addWidget(self.live_cam_button)
 
 
     
@@ -204,6 +229,41 @@ class MainWindow(QtWidgets.QMainWindow):
         self.bg_roi.setVisible(True)
 
 
+    def load_new_frame(self, frame):
+        if(self.live_cam_button.isChecked):
+            self.main_imi.setImage(frame)
+
+    def live_button_clicked(self):
+        self.prep_rois()
+
+        if(self.live_cam_button.isChecked):
+            print("live")
+            self.start_live_view_sig.emit()
+            
+        else:
+            return
+        
+    def prep_rois(self):
+        x,y = np.shape(self.main_imi.image) 
+        # ROI parameters
+        roi_size = 100
+        roi_pos = ((y - roi_size) / 2, (x - roi_size) / 2)  # Centered position
+        roi_bounds = pg.QtCore.QRectF(pg.QtCore.QPoint(0, 0), pg.QtCore.QPoint(y, x)) #ROI bounded to the image size.
+        
+
+        # ROI centered in image
+        self.ee_roi.setPos(roi_pos)
+        self.bg_roi.setPos((y - self.bg_roi.size().y(), x-self.bg_roi.size().y()))
+
+        # Set ROI Bounds
+        self.ee_roi.maxBounds = roi_bounds
+        self.bg_roi.maxBounds = roi_bounds
+
+        #Show ROIs
+        self.ee_roi.setVisible(True)
+        self.bg_roi.setVisible(True)
+
+
     def main_image_changed(self):
         '''
         Runs any time the main image changes.
@@ -217,7 +277,7 @@ class MainWindow(QtWidgets.QMainWindow):
         '''
         com = center_of_mass(self.main_imi.image)
         offset = self.ee_roi.size().x() / 2 #Adjust for 'pos' controlling the top left corner of the ROI
-        self.ee_roi.setPos((com[1]-offset, com[0] - offset))
+        self.ee_roi.setPos((com[1]-offset, com[0] - offset)) # Centers ROI because position is based on top right
 
 
         ### This changes centroid to only use area inside ROI and repeats until it has found a good center. Useful for stars but maybe not for this.
@@ -245,6 +305,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.hist.autoHistogramRange()
         self.calculate_ee()
 
+    def ee_region_changed(self):
+        '''
+        Runs every time the ee_roi region changes. Calculates EE and half, repositions half_roi to center
+        '''
+        self.calculate_ee()
+        ee_x, ee_y = self.ee_roi.pos()
+        ee_size = self.ee_roi.size()[0]
+        half_size = self.half_roi.size()[0]
+        self.half_roi.setPos(ee_x + (ee_size-half_size)/2, ee_y + (ee_size-half_size)/2)
 
     def bg_reg_changed(self):
         '''
@@ -253,24 +322,6 @@ class MainWindow(QtWidgets.QMainWindow):
         if np.array_equal(self.main_imi.image, self.og_im_data) == False: # So it doesn't run every frame the box moves, only once.
             self.main_imi.setImage(self.og_im_data)
             self.calculate_ee()
-
-    def half_energy(self):
-        '''
-        Returns the radius from center of ee_roi necessary to encircle 50% energy of the ee_roi
-        '''
-        ee_array = self.ee_roi.getArrayRegion(self.main_imi.image, self.main_imi)
-        ee_full = np.sum(ee_array)
-        radius = np.ceil(self.ee_roi.size()[0]/2)
-        for r in range(1, int(radius)):
-            aperture = CircularAperture((np.shape(ee_array)[0]/2,np.shape(ee_array)[1]/2), r = r)
-            aperture_counts = aperture.do_photometry(ee_array, method='center')[0]
-            if aperture_counts / ee_full >= 0.5:
-                print(f"50% at r={r}")
-                return
-        
-        print()
-        return
-
 
 
     def pick_file(self):
@@ -320,6 +371,16 @@ class MainWindow(QtWidgets.QMainWindow):
             self.pc_enc_label.setText(f"{np.round(ee / self.total_counts, 4)} ({int(ee)}/{int(self.total_counts)})")
         else:
             self.pc_enc_label.setText(f"0 ({ee}/{self.total_counts})")
+
+    def display_half(self, radius):
+        '''
+        Updates display of half-encircled radius after each calculation by EE Thread. Draws a circle around that region.
+        '''
+        self.half_label.setText(str(radius))
+        self.half_roi.setSize(radius * 2, center=(0.5, 0.5))
+
+
+
         
         
         
@@ -333,13 +394,23 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def closeEvent(self, event):
+        '''
+        Runs at application exit, closes thread so we don't get errors.
+        '''
         self.ee_thread.quit()
         self.ee_thread.wait()
         event.accept()
 
-class EE_Worker(QtCore.QObject):
 
-    resultReady = QtCore.Signal(float)
+
+
+
+class EE_Worker(QtCore.QObject):
+    '''
+    Thread to manage encircled energy calculations
+    '''
+    ee_ready = QtCore.Signal(float)
+    half_ready = QtCore.Signal(int)
 
     def __init__(self, parent = None):
         super().__init__(parent)
@@ -351,7 +422,54 @@ class EE_Worker(QtCore.QObject):
         '''
         roi_region = ee_roi.getArrayRegion(image, image_item)
         ee = np.sum(roi_region)
-        self.resultReady.emit(ee)
+        self.half_energy(ee, roi_region)
+        self.ee_ready.emit(ee)
+        
+
+    def half_energy(self, ee, roi_region):
+        '''
+        Returns the radius from center of ee_roi necessary to encircle 50% energy of the ee_roi
+        '''
+        r_min = 1
+        r_max = np.shape(roi_region)[0]/2 # Max radius to be searched (half of size(diameter))
+        while r_max-r_min > 1:
+            r_mid = (r_max+r_min)/2
+            aperture = CircularAperture((np.shape(roi_region)[0]/2,np.shape(roi_region)[1]/2), r = r_mid)
+            aperture_counts = aperture.do_photometry(roi_region, method='center')[0]
+            pc_enc = aperture_counts / ee
+            if(pc_enc > 0.5):
+                r_max = r_mid
+            else:
+                r_min = r_mid
+        
+        self.half_ready.emit(round(r_mid))
+        return
+    
+class Camera_Worker(QtCore.QObject):
+    frame_ready = QtCore.Signal(np.ndarray)
+    
+    def __init__(self, parent = None):
+        super().__init__(parent)
+        asi.init(r"C:\Program Files\ASIStudio\ASICamera2.dll")
+        self.camera = asi.Camera(asi.list_cameras()[0])
+        self.camera.set_roi(bins=4)
+
+    _is_running = True
+        
+    def run_live(self):
+
+        while self._is_running:
+            timeout = (self.camera.get_control_value(asi.ASI_EXPOSURE)[0] / 1000) * 2 + 500
+            
+            self.camera.start_video_capture()
+            frame = self.camera.capture_video_frame(timeout=timeout)
+            self.frame_ready.emit(frame)
+
+            QtCore.QThread.msleep(10)
+
+        
+
+    
 
     
         
