@@ -46,6 +46,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.camera_worker.moveToThread(self.camera_thread)
         self.camera_worker.frame_ready.connect(self.load_new_frame)
         self.camera_worker.frame_ready.connect(self.calculate_ee)
+        self.camera_worker.first_frame.connect(self.first_frame_received)
         self.start_live_view_sig.connect(self.camera_worker.run_live)
         self.camera_thread.start()
 
@@ -230,34 +231,47 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def load_new_frame(self, frame):
-        if(self.live_cam_button.isChecked):
-            self.main_imi.setImage(frame)
+        if(self.live_cam_button.isChecked()):
+            background = np.average(self.bg_roi.getArrayRegion(frame, self.main_imi))
+            bg_subbed_frame = frame - background
+            bg_subbed_frame[bg_subbed_frame < 0] = 0
+            self.main_imi.setImage(bg_subbed_frame)
 
     def live_button_clicked(self):
-        self.prep_rois()
+        
 
-        if(self.live_cam_button.isChecked):
+        if(self.live_cam_button.isDown):
             print("live")
             self.start_live_view_sig.emit()
             
         else:
-            return
-        
-    def prep_rois(self):
-        x,y = np.shape(self.main_imi.image) 
-        # ROI parameters
-        roi_size = 100
-        roi_pos = ((y - roi_size) / 2, (x - roi_size) / 2)  # Centered position
-        roi_bounds = pg.QtCore.QRectF(pg.QtCore.QPoint(0, 0), pg.QtCore.QPoint(y, x)) #ROI bounded to the image size.
+            self.camera_thread.quit()
+            self.main_imi.setImage(self.og_im_data)
+
+    def first_frame_received(self):
+        self.prep_rois()
         
 
+        
+    def prep_rois(self):
+        
+        print("prep")
+
+        x,y = np.shape(self.main_imi.image) 
+
+        # ROI parameters
+        roi_size = self.ee_roi.size()[0]
+        roi_pos = ((y - roi_size) / 2, (x - roi_size) / 2)  # Centered position
+
+        roi_bounds = pg.QtCore.QRectF(pg.QtCore.QPoint(0, 0), pg.QtCore.QPoint(y, x)) #ROI bounded to the image size.
+        
         # ROI centered in image
         self.ee_roi.setPos(roi_pos)
         self.bg_roi.setPos((y - self.bg_roi.size().y(), x-self.bg_roi.size().y()))
 
         # Set ROI Bounds
-        self.ee_roi.maxBounds = roi_bounds
-        self.bg_roi.maxBounds = roi_bounds
+        # self.ee_roi.maxBounds = roi_bounds
+        # self.bg_roi.maxBounds = roi_bounds
 
         #Show ROIs
         self.ee_roi.setVisible(True)
@@ -319,7 +333,8 @@ class MainWindow(QtWidgets.QMainWindow):
         '''
         Revert to original image when background ROI is moved.
         '''
-        if np.array_equal(self.main_imi.image, self.og_im_data) == False: # So it doesn't run every frame the box moves, only once.
+
+        if np.array_equal(self.main_imi.image, self.og_im_data) == False and self.live_cam_button.isChecked() == False: # So it doesn't run every frame the box moves, only once.
             self.main_imi.setImage(self.og_im_data)
             self.calculate_ee()
 
@@ -365,7 +380,8 @@ class MainWindow(QtWidgets.QMainWindow):
         '''
         Updates display of EE after each calculation by EE Thread
         '''
-        self.dp_roi_size.setText(f"{int(self.ee_roi.size().x())}")
+        if(self.dp_roi_size.text() != f"{int(self.ee_roi.size().x())}"):
+            self.dp_roi_size.setText(f"{int(self.ee_roi.size().x())}")
 
         if self.total_counts != 0:
             self.pc_enc_label.setText(f"{np.round(ee / self.total_counts, 4)} ({int(ee)}/{int(self.total_counts)})")
@@ -399,6 +415,7 @@ class MainWindow(QtWidgets.QMainWindow):
         '''
         self.ee_thread.quit()
         self.ee_thread.wait()
+        self.camera_thread.quit()
         event.accept()
 
 
@@ -447,25 +464,35 @@ class EE_Worker(QtCore.QObject):
     
 class Camera_Worker(QtCore.QObject):
     frame_ready = QtCore.Signal(np.ndarray)
+    first_frame = QtCore.Signal()
     
     def __init__(self, parent = None):
         super().__init__(parent)
         asi.init(r"C:\Program Files\ASIStudio\ASICamera2.dll")
         self.camera = asi.Camera(asi.list_cameras()[0])
         self.camera.set_roi(bins=4)
+        self.camera.set_image_type(asi.ASI_IMG_RAW16)
+        
+        
 
     _is_running = True
         
     def run_live(self):
+        timeout = (self.camera.get_control_value(asi.ASI_EXPOSURE)[0] / 1000) * 2 + 500
+        
+        self.camera.start_video_capture()
+        frame = self.camera.capture_video_frame(timeout=timeout)
+        self.frame_ready.emit(frame)
+
+        QtCore.QThread.msleep(250)
+        self.first_frame.emit()
 
         while self._is_running:
-            timeout = (self.camera.get_control_value(asi.ASI_EXPOSURE)[0] / 1000) * 2 + 500
-            
-            self.camera.start_video_capture()
+
             frame = self.camera.capture_video_frame(timeout=timeout)
             self.frame_ready.emit(frame)
 
-            QtCore.QThread.msleep(10)
+            QtCore.QThread.msleep(250)
 
         
 
