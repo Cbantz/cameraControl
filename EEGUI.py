@@ -19,6 +19,7 @@ class MainWindow(QtWidgets.QMainWindow):
     #Create Signals
     calculate_ee_req = QtCore.Signal(object, object, object) # Signal used when you need to calculate the EE in ee_roi
     start_live_view_sig = QtCore.Signal() # SIgnal to start live view from camera
+    request_frame = QtCore.Signal()
 
     def __init__(self):
         super().__init__()
@@ -30,9 +31,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ee_thread = QtCore.QThread()
         self.is_ee_thread_busy = False # Flag for when ee thread is processing
         self.ee_worker.moveToThread(self.ee_thread)
-        self.ee_worker.ee_ready.connect(self.display_ee) # Display results of ee when done
         self.is_ee_queued = False # Flag if there is a position that has not been updated for ee_roi
-        self.ee_worker.ee_ready.connect(self.ee_thread_next_process) # Determine if a new position should be calculated and start it
+        self.ee_worker.ee_ready.connect(self.ee_result_received) # Determine if a new position should be calculated and start it, display results, ask for next frame if applicable
         self.calculate_ee_req.connect(self.ee_worker.calculate_ee) # Runs calculate_ee() whenever the ee_req signal is sent
         self.ee_thread.start()
             # Half Encircled
@@ -47,7 +47,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.camera_worker.frame_ready.connect(self.load_new_frame)
         self.camera_worker.frame_ready.connect(self.calculate_ee)
         self.camera_worker.first_frame.connect(self.first_frame_received)
-        self.start_live_view_sig.connect(self.camera_worker.run_live)
+        self.request_frame.connect(self.camera_worker.send_frame)
+        self.start_live_view_sig.connect(self.camera_worker.start_live)
         self.camera_thread.start()
 
 
@@ -78,7 +79,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ee_roi.addScaleHandle((1, 0), (0.5, 0.5), lockAspect=True)
         self.ee_roi.addScaleHandle((0, 1), (0.5, 0.5), lockAspect=True)
         self.ee_roi.addScaleHandle((1, 1), (0.5, 0.5), lockAspect=True)
-        self.ee_roi.sigRegionChangeFinished
+        
         
         self.ee_roi.sigRegionChanged.connect(self.ee_region_changed)
         self.ee_roi.setVisible(False)
@@ -91,6 +92,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.bg_roi = pg.RectROI((0,0), size=300)
         self.bg_roi.sigRegionChanged.connect(self.bg_reg_changed)
         self.bg_roi.setVisible(False)
+        self.background_average = 0
 
         # Create Background Select Button
         self.bg_set_button = pg.QtWidgets.QPushButton("Set Background")
@@ -241,8 +243,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
 
         if(self.live_cam_button.isDown):
-            print("live")
             self.start_live_view_sig.emit()
+            self.hist.setHistogramRange(0, 65535)
             
         else:
             self.camera_thread.quit()
@@ -250,12 +252,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def first_frame_received(self):
         self.prep_rois()
+
         
 
         
     def prep_rois(self):
         
-        print("prep")
 
         x,y = np.shape(self.main_imi.image) 
 
@@ -270,8 +272,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.bg_roi.setPos((y - self.bg_roi.size().y(), x-self.bg_roi.size().y()))
 
         # Set ROI Bounds
-        # self.ee_roi.maxBounds = roi_bounds
-        # self.bg_roi.maxBounds = roi_bounds
+        self.ee_roi.maxBounds = roi_bounds
+        self.bg_roi.maxBounds = roi_bounds
 
         #Show ROIs
         self.ee_roi.setVisible(True)
@@ -316,13 +318,15 @@ class MainWindow(QtWidgets.QMainWindow):
         bg_rem_data = self.og_im_data - avg_bg_count
         bg_rem_data[bg_rem_data<0] = 0 # Sets negative values to 0
         self.main_imi.setImage(bg_rem_data) # Remove average background count
-        self.hist.autoHistogramRange()
         self.calculate_ee()
 
     def ee_region_changed(self):
         '''
         Runs every time the ee_roi region changes. Calculates EE and half, repositions half_roi to center
         '''
+        if(self.dp_roi_size.text() != f"{int(self.ee_roi.size().x())}"):
+            self.dp_roi_size.setText(f"{int(self.ee_roi.size().x())}")
+        
         self.calculate_ee()
         ee_x, ee_y = self.ee_roi.pos()
         ee_size = self.ee_roi.size()[0]
@@ -331,12 +335,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def bg_reg_changed(self):
         '''
-        Revert to original image when background ROI is moved.
+        
         '''
 
-        if np.array_equal(self.main_imi.image, self.og_im_data) == False and self.live_cam_button.isChecked() == False: # So it doesn't run every frame the box moves, only once.
-            self.main_imi.setImage(self.og_im_data)
-            self.calculate_ee()
+        if self.live_cam_button.isChecked() == False:
+            self.set_background()
 
 
     def pick_file(self):
@@ -373,15 +376,21 @@ class MainWindow(QtWidgets.QMainWindow):
             self.is_ee_thread_busy = False
             return
 
-        
+    def ee_result_received(self, ee):
+
+        self.display_ee(ee)
+        self.ee_thread_next_process()
+
+        if(self.live_cam_button.isChecked()):
+            self.request_frame.emit()
+
         
 
     def display_ee(self, ee):
         '''
         Updates display of EE after each calculation by EE Thread
         '''
-        if(self.dp_roi_size.text() != f"{int(self.ee_roi.size().x())}"):
-            self.dp_roi_size.setText(f"{int(self.ee_roi.size().x())}")
+        
 
         if self.total_counts != 0:
             self.pc_enc_label.setText(f"{np.round(ee / self.total_counts, 4)} ({int(ee)}/{int(self.total_counts)})")
@@ -405,7 +414,6 @@ class MainWindow(QtWidgets.QMainWindow):
         '''
         Updates dp_roi_size row of Data Panel
         '''
-        print("edited")
         self.ee_roi.setSize(float(self.dp_roi_size.text()), center=(0.5, 0.5))
 
 
@@ -469,30 +477,30 @@ class Camera_Worker(QtCore.QObject):
     def __init__(self, parent = None):
         super().__init__(parent)
         asi.init(r"C:\Program Files\ASIStudio\ASICamera2.dll")
-        self.camera = asi.Camera(asi.list_cameras()[0])
-        self.camera.set_roi(bins=4)
-        self.camera.set_image_type(asi.ASI_IMG_RAW16)
-        
-        
+        try:
+            self.camera = asi.Camera(asi.list_cameras()[0])
+            self.camera.set_roi(bins=4)
+            self.camera.set_image_type(asi.ASI_IMG_RAW16)
+        except Exception as e:
+            print("No Camera is Connected")
 
-    _is_running = True
-        
-    def run_live(self):
-        timeout = (self.camera.get_control_value(asi.ASI_EXPOSURE)[0] / 1000) * 2 + 500
+    def start_live(self):
+        self.timeout = (self.camera.get_control_value(asi.ASI_EXPOSURE)[0] / 1000) * 2 + 500
         
         self.camera.start_video_capture()
-        frame = self.camera.capture_video_frame(timeout=timeout)
+        frame = self.camera.capture_video_frame(timeout=self.timeout)
         self.frame_ready.emit(frame)
 
         QtCore.QThread.msleep(250)
         self.first_frame.emit()
+        self.frame_ready.emit(frame)
+        
+        
+    def send_frame(self):
 
-        while self._is_running:
+        frame = self.camera.capture_video_frame(timeout=self.timeout)
+        self.frame_ready.emit(frame)
 
-            frame = self.camera.capture_video_frame(timeout=timeout)
-            self.frame_ready.emit(frame)
-
-            QtCore.QThread.msleep(250)
 
         
 
