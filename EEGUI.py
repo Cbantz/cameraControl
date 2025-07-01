@@ -5,7 +5,6 @@ import numpy as np
 from scipy.ndimage import center_of_mass
 from photutils.aperture import CircularAperture
 import zwoasi as asi
-import os
 import time
 
 
@@ -18,8 +17,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     #Create Signals
     calculate_ee_req = QtCore.Signal(object, object, object) # Signal used when you need to calculate the EE in ee_roi
-    start_live_view_sig = QtCore.Signal() # SIgnal to start live view from camera
-    request_frame = QtCore.Signal()
+    start_live_view_sig = QtCore.Signal() # Signal to start live view from camera
+    request_frame = QtCore.Signal(pg.ROI, pg.ImageItem) # Signal to request a frame after previous has finished displaying
 
     def __init__(self):
         super().__init__()
@@ -35,21 +34,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ee_worker.ee_ready.connect(self.ee_result_received) # Determine if a new position should be calculated and start it, display results, ask for next frame if applicable
         self.calculate_ee_req.connect(self.ee_worker.calculate_ee) # Runs calculate_ee() whenever the ee_req signal is sent
         self.ee_thread.start()
+
             # Half Encircled
         self.ee_worker.half_ready.connect(self.display_half) # Display half-encircled when done
 
-        self.setWindowTitle("FITS File Viewer")
+        self.setWindowTitle("EE GUI (University of Iowa OAT Lab)")
         
         #Camera
         self.camera_worker = Camera_Worker()
         self.camera_thread = QtCore.QThread()
         self.camera_worker.moveToThread(self.camera_thread)
-        self.camera_worker.frame_ready.connect(self.load_new_frame)
-        self.camera_worker.frame_ready.connect(self.calculate_ee)
+        self.camera_worker.frame_ready.connect(self.frame_received)
         self.camera_worker.first_frame.connect(self.first_frame_received)
         self.request_frame.connect(self.camera_worker.send_frame)
         self.start_live_view_sig.connect(self.camera_worker.start_live)
-        self.camera_thread.start()
+        
 
 
 
@@ -73,20 +72,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.view.setAspectLocked(True)
 
         # Create EE ROI
-        self.ee_roi = pg.CircleROI((0,0), size=100, scaleSnap = True, snapSize = 1)
+        self.ee_roi = pg.CircleROI((0,0), size=100, scaleSnap = True, snapSize = 1, translateSnap=True)
         self.ee_roi.removeHandle(0)
         self.ee_roi.addScaleHandle((0, 0), (0.5, 0.5), lockAspect=True)
         self.ee_roi.addScaleHandle((1, 0), (0.5, 0.5), lockAspect=True)
         self.ee_roi.addScaleHandle((0, 1), (0.5, 0.5), lockAspect=True)
         self.ee_roi.addScaleHandle((1, 1), (0.5, 0.5), lockAspect=True)
-        
-        
         self.ee_roi.sigRegionChanged.connect(self.ee_region_changed)
         self.ee_roi.setVisible(False)
 
         # Create Half ROI
-        self.half_roi = pg.CircleROI((0,0), size=1)
+        self.half_roi = pg.CircleROI((0,0), size=1, movable = False)
         self.half_roi.removeHandle(0)
+
 
         # Create Background ROI
         self.bg_roi = pg.RectROI((0,0), size=300)
@@ -94,17 +92,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.bg_roi.setVisible(False)
         self.background_average = 0
 
-        # Create Background Select Button
-        self.bg_set_button = pg.QtWidgets.QPushButton("Set Background")
-        self.bg_set_button.clicked.connect(self.set_background)
-
         # Create Centroid Button
         self.centroid_button = pg.QtWidgets.QPushButton("Centroid")
         self.centroid_button.pressed.connect(self.centroid)
 
-        # Create Plot Button
-        self.plot_button = QtWidgets.QPushButton("Plot")
-        self.plot_button.setCheckable(True)
 
         # Create Camera button
         self.live_cam_button = QtWidgets.QPushButton("Live Camera View")
@@ -144,6 +135,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # Title Label
         dp_text = pg.QtWidgets.QLabel("Data Panel")
 
+        # EE ROI Position
+        self.dp_roi_pos_x = pg.QtWidgets.QLineEdit(f"{self.ee_roi.pos().x()}")
+        self.dp_roi_pos_y = pg.QtWidgets.QLineEdit(f"{self.ee_roi.pos().y()}")
+
         # EE ROI Size Line Edit
         self.dp_roi_size = pg.QtWidgets.QLineEdit(f"{self.ee_roi.size().x()}")
         self.dp_roi_size.editingFinished.connect(self.dp_roi_size_editing_finished)
@@ -157,6 +152,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.half_label = QtWidgets.QLabel()
 
         # Add Rows to Data Panel Form
+        dp_form_layout.addRow("ROI X Position: ", self.dp_roi_pos_x)
+        dp_form_layout.addRow("ROI Y Position: ", self.dp_roi_pos_y)
         dp_form_layout.addRow("ROI Size: ", self.dp_roi_size)
         dp_form_layout.addRow("Energy Enclosed: ", self.pc_enc_label)
         dp_form_layout.addRow("50% Enclosed Radius: ", self.half_label)
@@ -164,24 +161,11 @@ class MainWindow(QtWidgets.QMainWindow):
         # Arrange Widgets in Data Panel
         self.dpgrid.addWidget(dp_text, 1)
         self.dpgrid.addWidget(dp_form, 10)
-
-        # Create EE Plot
-        self.p2 = pg.PlotWidget()
-        self.ee_pdi = pg.PlotDataItem()
-        self.ee_pdi.setData(np.array([0,1,2,3,4,5]), np.array([0,1,2,3,4,5]))
-        self.ee_plot_data = []
-
-
-
-
-        #self.p2.addItem(self.ee_pdi)
         
 
         # Arrange Widgets in Master Widget
-        self.grid.addWidget(self.main_plot, 0, 0, 2, 2)
-        self.grid.addWidget(self.dp, 0, 2, 2, 1)
-        self.grid.addWidget(self.p2, 2, 0, 3, 1)
-
+        self.grid.addWidget(self.main_plot, 0, 0, 1, 2)
+        self.grid.addWidget(self.dp, 0, 2, 1, 1)
         # Set the central widget of the Window and add toolbar
         self.setCentralWidget(self.win1)
 
@@ -189,11 +173,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toolbar = QtWidgets.QToolBar("Main Toolbar")
         self.addToolBar(QtCore.Qt.TopToolBarArea, self.toolbar)
         self.toolbar.addWidget(file_button)
-        self.toolbar.addWidget(self.bg_set_button)
         self.toolbar.addWidget(self.centroid_button)
-        self.toolbar.addWidget(self.plot_button)
         self.toolbar.addWidget(self.live_cam_button)
 
+        self.load_image(filepath="oat_lab_logo.fits")
 
     
     def load_image(self, filepath):
@@ -203,61 +186,73 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Open Selected Image
         hdul = fits.open(filepath)
+        print()
         header, data = hdul[0].header, hdul[0].data
 
         self.main_imi.setImage(data) # Set as Main Image
         self.og_im_data = data #Set as OG Image
         self.hist.setImageItem(self.main_imi) # Set as Hist Image
 
-        x,y = np.shape(data) 
+        self.prep_rois()
 
+    def frame_received(self, frame):
+        if(self.live_cam_button.isChecked()):
+            self.load_new_frame(frame)
 
-
-        # ROI parameters
-        roi_size = 100
-        roi_pos = ((y - roi_size) / 2, (x - roi_size) / 2)  # Centered position
-        roi_bounds = pg.QtCore.QRectF(pg.QtCore.QPoint(0, 0), pg.QtCore.QPoint(y, x)) #ROI bounded to the image size.
-        
-
-        # ROI centered in image
-        self.ee_roi.setPos(roi_pos)
-        self.bg_roi.setPos((y - self.bg_roi.size().y(), x-self.bg_roi.size().y()))
-
-        # Set ROI Bounds
-        self.ee_roi.maxBounds = roi_bounds
-        self.bg_roi.maxBounds = roi_bounds
-
-        #Show ROIs
-        self.ee_roi.setVisible(True)
-        self.bg_roi.setVisible(True)
-
+        else:
+            return
 
     def load_new_frame(self, frame):
-        if(self.live_cam_button.isChecked()):
-            background = np.average(self.bg_roi.getArrayRegion(frame, self.main_imi))
-            bg_subbed_frame = frame - background
-            bg_subbed_frame[bg_subbed_frame < 0] = 0
-            self.main_imi.setImage(bg_subbed_frame)
+        '''
+        Subtracts background region from received frame, sets frame as main imi image, moves to centroid if necessary, runs calculate_ee
+        '''
+        self.main_imi.setImage(frame)
+        if(self.centroid_button.isChecked()):
+            self.centroid()
+        self.calculate_ee()
 
     def live_button_clicked(self):
-        
+        '''
+        Runs whenever live button is clicked. Either starts or ends the live camera feed.
+        '''
+        if(self.live_cam_button.isChecked()): # Button pressed down
+            self.start_live_cam()
+        else: # Button released
+            self.end_live_cam()
 
-        if(self.live_cam_button.isDown):
-            self.start_live_view_sig.emit()
-            self.hist.setHistogramRange(0, 65535)
-            
-        else:
-            self.camera_thread.quit()
-            self.main_imi.setImage(self.og_im_data)
+    def start_live_cam(self):
+        '''
+        Starts live camera feed
+        '''
+        self.camera_thread.start()
+        self.centroid_button.setCheckable(True) # Allows for live centering
+        self.hist.disableAutoHistogramRange()
+        self.hist.setHistogramRange(0, 65535) # Max value of 16 bit
+        self.start_live_view_sig.emit()
+
+    def end_live_cam(self):
+        '''
+        Ends live camera feed, reverts to last loaded image
+        '''
+        self.centroid_button.setCheckable(False)
+        self.camera_thread.quit()
+        self.camera_thread.wait()
+        self.main_imi.setImage(self.og_im_data)
+        self.prep_rois()
 
     def first_frame_received(self):
+        '''
+        Runs when the first live camera frame is received. Prepares ROIs
+        '''
         self.prep_rois()
 
         
 
         
     def prep_rois(self):
-        
+        '''
+        Will organize and show ROIs according to content being shown. Useful when changing main image focus or type.
+        '''
 
         x,y = np.shape(self.main_imi.image) 
 
@@ -287,13 +282,15 @@ class MainWindow(QtWidgets.QMainWindow):
         '''
         self.total_counts = np.sum(self.main_imi.image)
 
+
     def centroid(self):
         '''
-        Sets the EE ROI to the scipy center of mass of the current displayed image
+        Moves the EE ROI to the scipy center of mass of the current displayed image
         '''
         com = center_of_mass(self.main_imi.image)
         offset = self.ee_roi.size().x() / 2 #Adjust for 'pos' controlling the top left corner of the ROI
-        self.ee_roi.setPos((com[1]-offset, com[0] - offset)) # Centers ROI because position is based on top right
+        centered_pos = (com[1]-offset, com[0] - offset)
+        self.ee_roi.setPos(centered_pos) # Centers ROI because position is based on top right
 
 
         ### This changes centroid to only use area inside ROI and repeats until it has found a good center. Useful for stars but maybe not for this.
@@ -303,7 +300,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # dist = np.sqrt(np.square(new_pos[0] - current_pos[0]) + np.square(new_pos[1] - current_pos[1]))
 
         # print(f"dist {dist}")
-        # if(dist >= 0.5):
+        # if(dist >= 0.25):
         #     self.ee_roi.setPos(new_pos)
         #     self.centroid()
         
@@ -326,16 +323,23 @@ class MainWindow(QtWidgets.QMainWindow):
         '''
         if(self.dp_roi_size.text() != f"{int(self.ee_roi.size().x())}"):
             self.dp_roi_size.setText(f"{int(self.ee_roi.size().x())}")
+
+        
         
         self.calculate_ee()
         ee_x, ee_y = self.ee_roi.pos()
+        #Update position text
         ee_size = self.ee_roi.size()[0]
+        self.dp_roi_pos_x.setText(str(ee_x + (ee_size/2)))
+        self.dp_roi_pos_y.setText(str(ee_y+(ee_size/2)))
+
+        # Update half_roi position
         half_size = self.half_roi.size()[0]
         self.half_roi.setPos(ee_x + (ee_size-half_size)/2, ee_y + (ee_size-half_size)/2)
 
     def bg_reg_changed(self):
         '''
-        
+        Runs whenever the background region changes, updates main image to subtract new background average
         '''
 
         if self.live_cam_button.isChecked() == False:
@@ -381,8 +385,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.display_ee(ee)
         self.ee_thread_next_process()
 
+
+        # If live feed is on, calls another frame, as this should be the last thing to process per frame
         if(self.live_cam_button.isChecked()):
-            self.request_frame.emit()
+            self.request_frame.emit(self.bg_roi, self.main_imi)
 
         
 
@@ -457,6 +463,8 @@ class EE_Worker(QtCore.QObject):
         '''
         r_min = 1
         r_max = np.shape(roi_region)[0]/2 # Max radius to be searched (half of size(diameter))
+
+        # Calculate half by splitting radius search in half until possible is only one pixel
         while r_max-r_min > 1:
             r_mid = (r_max+r_min)/2
             aperture = CircularAperture((np.shape(roi_region)[0]/2,np.shape(roi_region)[1]/2), r = r_mid)
@@ -468,7 +476,6 @@ class EE_Worker(QtCore.QObject):
                 r_min = r_mid
         
         self.half_ready.emit(round(r_mid))
-        return
     
 class Camera_Worker(QtCore.QObject):
     frame_ready = QtCore.Signal(np.ndarray)
@@ -477,6 +484,11 @@ class Camera_Worker(QtCore.QObject):
     def __init__(self, parent = None):
         super().__init__(parent)
         asi.init(r"C:\Program Files\ASIStudio\ASICamera2.dll")
+
+    def update_camera_settings(self):
+        '''
+        Sets camera settings.
+        '''
         try:
             self.camera = asi.Camera(asi.list_cameras()[0])
             self.camera.set_roi(bins=4)
@@ -485,7 +497,11 @@ class Camera_Worker(QtCore.QObject):
             print("No Camera is Connected")
 
     def start_live(self):
-        self.timeout = (self.camera.get_control_value(asi.ASI_EXPOSURE)[0] / 1000) * 2 + 500
+        '''
+        Starts the camera live feed.
+        '''
+        self.update_camera_settings()
+        self.timeout = (self.camera.get_control_value(asi.ASI_EXPOSURE)[0] / 1000) * 100000 + 500
         
         self.camera.start_video_capture()
         frame = self.camera.capture_video_frame(timeout=self.timeout)
@@ -493,13 +509,19 @@ class Camera_Worker(QtCore.QObject):
 
         QtCore.QThread.msleep(250)
         self.first_frame.emit()
-        self.frame_ready.emit(frame)
-        
-        
-    def send_frame(self):
 
+
+        
+        
+    def send_frame(self, bg_roi, main_imi):
+        '''
+        Takes and processes a frame before sending it to be displayed in the main window.
+        '''
         frame = self.camera.capture_video_frame(timeout=self.timeout)
-        self.frame_ready.emit(frame)
+        background = np.average(bg_roi.getArrayRegion(frame, main_imi))
+        bg_subbed_frame = frame - background
+        bg_subbed_frame[bg_subbed_frame < 0] = 0
+        self.frame_ready.emit(bg_subbed_frame)
 
 
         
