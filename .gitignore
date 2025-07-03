@@ -1,1 +1,4 @@
 ASI SDK
+*.pyc
+esp301ik.ipynb
+/src
