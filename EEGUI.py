@@ -4,21 +4,18 @@ from astropy.io import fits
 import numpy as np
 from scipy.ndimage import center_of_mass
 from photutils.aperture import CircularAperture
-import zwoasi as asi
+from signals import signals as sig
 import time
 
 
 
-# Start Qt app
-app = pg.mkQApp("Image Display")
+
 
 # Create main graphics window
 class MainWindow(QtWidgets.QMainWindow):
 
     #Create Signals
     calculate_ee_req = QtCore.Signal(object, object, object) # Signal used when you need to calculate the EE in ee_roi
-    start_live_view_sig = QtCore.Signal() # Signal to start live view from camera
-    request_frame = QtCore.Signal(pg.ROI, pg.ImageItem) # Signal to request a frame after previous has finished displaying
 
     def __init__(self):
         super().__init__()
@@ -41,14 +38,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("EE GUI (University of Iowa OAT Lab)")
         
         #Camera
-        self.camera_worker = Camera_Worker()
-        self.camera_thread = QtCore.QThread()
-        self.camera_worker.moveToThread(self.camera_thread)
-        self.camera_worker.frame_ready.connect(self.frame_received)
-        self.camera_worker.first_frame.connect(self.first_frame_received)
-        self.request_frame.connect(self.camera_worker.send_frame)
-        self.start_live_view_sig.connect(self.camera_worker.start_live)
-        
+        sig.cam_frame_ready.connect(self.frame_received)
+        sig.cam_first_frame.connect(self.first_frame_received)
+        self.camera_activated = False
 
 
 
@@ -216,6 +208,9 @@ class MainWindow(QtWidgets.QMainWindow):
         Runs whenever live button is clicked. Either starts or ends the live camera feed.
         '''
         if(self.live_cam_button.isChecked()): # Button pressed down
+            if(not self.camera_activated):
+               sig.connect_to_camera.emit()
+               self.camera_activated = True
             self.start_live_cam()
         else: # Button released
             self.end_live_cam()
@@ -224,19 +219,17 @@ class MainWindow(QtWidgets.QMainWindow):
         '''
         Starts live camera feed
         '''
-        self.camera_thread.start()
         self.centroid_button.setCheckable(True) # Allows for live centering
         self.hist.disableAutoHistogramRange()
         self.hist.setHistogramRange(0, 65535) # Max value of 16 bit
-        self.start_live_view_sig.emit()
+        sig.main_win_start_live_view.emit()
 
     def end_live_cam(self):
         '''
         Ends live camera feed, reverts to last loaded image
         '''
+        sig.main_win_end_live_view.emit()
         self.centroid_button.setCheckable(False)
-        self.camera_thread.quit()
-        self.camera_thread.wait()
         self.main_imi.setImage(self.og_im_data)
         self.prep_rois()
 
@@ -244,6 +237,7 @@ class MainWindow(QtWidgets.QMainWindow):
         '''
         Runs when the first live camera frame is received. Prepares ROIs
         '''
+        print("Feed Initialized")
         self.prep_rois()
 
         
@@ -254,6 +248,7 @@ class MainWindow(QtWidgets.QMainWindow):
         Will organize and show ROIs according to content being shown. Useful when changing main image focus or type.
         '''
 
+        print("Arranging ROIs")
         x,y = np.shape(self.main_imi.image) 
 
         # ROI parameters
@@ -388,7 +383,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # If live feed is on, calls another frame, as this should be the last thing to process per frame
         if(self.live_cam_button.isChecked()):
-            self.request_frame.emit(self.bg_roi, self.main_imi)
+            sig.main_win_req_frame.emit(self.bg_roi, self.main_imi)
 
         
 
@@ -410,12 +405,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.half_label.setText(str(radius))
         self.half_roi.setSize(radius * 2, center=(0.5, 0.5))
 
-
-
-        
-        
-        
-
     def dp_roi_size_editing_finished(self):
         '''
         Updates dp_roi_size row of Data Panel
@@ -429,7 +418,6 @@ class MainWindow(QtWidgets.QMainWindow):
         '''
         self.ee_thread.quit()
         self.ee_thread.wait()
-        self.camera_thread.quit()
         event.accept()
 
 
@@ -477,52 +465,6 @@ class EE_Worker(QtCore.QObject):
         
         self.half_ready.emit(round(r_mid))
     
-class Camera_Worker(QtCore.QObject):
-    frame_ready = QtCore.Signal(np.ndarray)
-    first_frame = QtCore.Signal()
-    
-    def __init__(self, parent = None):
-        super().__init__(parent)
-        asi.init(r"C:\Program Files\ASIStudio\ASICamera2.dll")
-
-    def update_camera_settings(self):
-        '''
-        Sets camera settings.
-        '''
-        try:
-            self.camera = asi.Camera(asi.list_cameras()[0])
-            self.camera.set_roi(bins=4)
-            self.camera.set_image_type(asi.ASI_IMG_RAW16)
-        except Exception as e:
-            print("No Camera is Connected")
-
-    def start_live(self):
-        '''
-        Starts the camera live feed.
-        '''
-        self.update_camera_settings()
-        self.timeout = (self.camera.get_control_value(asi.ASI_EXPOSURE)[0] / 1000) * 100000 + 500
-        
-        self.camera.start_video_capture()
-        frame = self.camera.capture_video_frame(timeout=self.timeout)
-        self.frame_ready.emit(frame)
-
-        QtCore.QThread.msleep(250)
-        self.first_frame.emit()
-
-
-        
-        
-    def send_frame(self, bg_roi, main_imi):
-        '''
-        Takes and processes a frame before sending it to be displayed in the main window.
-        '''
-        frame = self.camera.capture_video_frame(timeout=self.timeout)
-        background = np.average(bg_roi.getArrayRegion(frame, main_imi))
-        bg_subbed_frame = frame - background
-        bg_subbed_frame[bg_subbed_frame < 0] = 0
-        self.frame_ready.emit(bg_subbed_frame)
-
 
         
 
@@ -547,10 +489,4 @@ class Camera_Worker(QtCore.QObject):
 
 
 
-# Display Widget as new Window
-win = MainWindow()
 
-
-win.show()
-
-app.exec()
