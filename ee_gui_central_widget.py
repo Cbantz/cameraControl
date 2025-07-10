@@ -6,6 +6,7 @@ from data_display_widget_ee_gui import Data_Display_Widget
 from ee_worker import EE_Worker
 from static_image_handler import Static_Image_Handler
 from camera import Camera
+from view_eegui import EE_Gui_Main_View
 
 class EE_GUI_Central_Widget(QtWidgets.QWidget):
 
@@ -138,109 +139,6 @@ class EE_GUI_Central_Widget(QtWidgets.QWidget):
         self.camera.first_frame.connect(self.view.center_rois)
 
 
-    
-
-
-
-
-
-    
-
-
-class EE_Gui_Main_View(pg.ViewBox):
-    def __init__(self, parent=None, border=None, lockAspect=True, enableMouse=True, invertY=True, enableMenu=True, name=None, invertX=False, defaultPadding=0.02):
-        super().__init__(parent, border, lockAspect, enableMouse, invertY, enableMenu, name, invertX, defaultPadding)
-
-        self.main_imi = pg.ImageItem(axisOrder='row-major')
-        self.addItem(self.main_imi)
-        self.centroid_button = None
-
-        self.create_rois()
-        
-
-
-    
-    
-    def create_rois(self):
-        # Create EE ROI
-        self.ee_roi = pg.CircleROI((0,0), size=100, scaleSnap = True, snapSize = 1, translateSnap=True)
-        self.ee_roi.removeHandle(0)
-        self.ee_roi.addScaleHandle((0, 0), (0.5, 0.5), lockAspect=True)
-        self.ee_roi.addScaleHandle((1, 0), (0.5, 0.5), lockAspect=True)
-        self.ee_roi.addScaleHandle((0, 1), (0.5, 0.5), lockAspect=True)
-        self.ee_roi.addScaleHandle((1, 1), (0.5, 0.5), lockAspect=True)
-        self.ee_roi.setVisible(False)
-
-        # Create Half ROI
-        self.half_roi = pg.CircleROI((0,0), size=1, movable = False)
-        self.half_roi.removeHandle(0)
-
-        # Create Background ROI
-        self.bg_roi = pg.RectROI((0,0), size=300)
-        self.bg_roi.setVisible(False)
-
-        self.addItem(self.ee_roi)
-        self.addItem(self.half_roi)
-        self.addItem(self.bg_roi)
-
-    def display_new_image(self, image: np.ndarray):
-        self.main_imi.setImage(image)
-
-    def centroid(self, com = None):
-        '''
-        Moves the EE ROI to the scipy center of mass of the current displayed image
-        '''
-
-        if not com:
-            com = center_of_mass(self.main_imi.image)
-            offset = self.ee_roi.size().x() / 2 #Adjust for 'pos' controlling the top left corner of the ROI
-            centered_pos = (com[1]-offset, com[0] - offset)
-            self.ee_roi.setPos(centered_pos) # Centers ROI because position is based on top right
-
-        elif self.centroid_button is not None:
-            if self.centroid_button.isChecked():
-                offset = self.ee_roi.size().x() / 2 #Adjust for 'pos' controlling the top left corner of the ROI
-                centered_pos = (com[1]-offset, com[0] - offset)
-                self.ee_roi.setPos(centered_pos) # Centers ROI because position is based on top right
-
-    def center_rois(self):
-        '''
-        Will organize and show ROIs according to content being shown. Useful when changing main image focus or type.
-        '''
-
-        print("Arranging ROIs")
-        x,y = np.shape(self.main_imi.image) 
-
-        # ROI parameters
-        roi_size = self.ee_roi.size()[0]
-        roi_pos = ((y - roi_size) / 2, (x - roi_size) / 2)  # Centered position
-
-        roi_bounds = pg.QtCore.QRectF(pg.QtCore.QPoint(0, 0), pg.QtCore.QPoint(y, x)) #ROI bounded to the image size.
-        
-        # ROI centered in image
-        self.ee_roi.setPos(roi_pos)
-        self.bg_roi.setPos((y - self.bg_roi.size().y(), x-self.bg_roi.size().y()))
-
-        # Set ROI Bounds
-        self.ee_roi.maxBounds = roi_bounds
-        self.bg_roi.maxBounds = roi_bounds
-
-        #Show ROIs
-        self.ee_roi.setVisible(True)
-        self.bg_roi.setVisible(True)
-
-    def set_half_roi_pos(self):
-        ee_x, ee_y = self.ee_roi.pos()
-        ee_size = self.ee_roi.size()[0]
-        half_size = self.half_roi.size()[0]
-        self.half_roi.setPos(ee_x + (ee_size-half_size)/2, ee_y + (ee_size-half_size)/2)
-
-    def set_half_roi_size(self, radius):
-        self.half_roi.setSize(radius * 2, center=(0.5,0.5))
-
-    def _set_centroid_button(self, button: QtWidgets.QPushButton):
-        self.centroid_button = button
-    
 
 
 

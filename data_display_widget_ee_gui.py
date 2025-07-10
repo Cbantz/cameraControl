@@ -75,6 +75,7 @@ class Data_Form(QtWidgets.QWidget):
 
 
 
+
 if __name__ == "__main__":
     app = pg.mkQApp()
     widget = Data_Display_Widget()
