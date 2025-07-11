@@ -3,6 +3,9 @@ from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import numpy as np
 
 class Data_Display_Widget(QtWidgets.QWidget):
+    '''
+    Main data widget. Should be populated with any widgets that will display information.
+    '''
     def __init__(self, parent = None):
         super().__init__(parent)
         layout = QtWidgets.QGridLayout()
@@ -15,6 +18,9 @@ class Data_Display_Widget(QtWidgets.QWidget):
 
 
     def set_up_ee_roi(self, roi: pg.ROI):
+        '''
+        Sets EE ROI to be used for statistics.
+        '''
         self.ee_roi = roi
         self.form.set_ee_roi(roi)
 
@@ -24,6 +30,9 @@ class Data_Display_Widget(QtWidgets.QWidget):
     
 
 class Data_Form(QtWidgets.QWidget):
+    '''
+    Form style widget, can display basic lines of text, both editable and not.
+    '''
     def __init__(self, parent = None):
         super().__init__(parent)
 

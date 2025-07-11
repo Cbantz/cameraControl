@@ -4,9 +4,13 @@ from scipy.ndimage import center_of_mass
 import numpy as np
 
 class EE_Gui_Main_View(pg.ViewBox):
+    '''
+    The main view widget of the EEGUI. Can show a live feed of the camera or a static image. Contains statistics about the frame displayed.
+    '''
     def __init__(self, parent=None, border=None, lockAspect=True, enableMouse=True, invertY=True, enableMenu=True, name=None, invertX=False, defaultPadding=0.02):
         super().__init__(parent, border, lockAspect, enableMouse, invertY, enableMenu, name, invertX, defaultPadding)
 
+        # Components
         self.main_imi = pg.ImageItem(axisOrder='row-major')
         self.addItem(self.main_imi)
         self.centroid_button = None
@@ -18,6 +22,9 @@ class EE_Gui_Main_View(pg.ViewBox):
     
     
     def create_rois(self):
+        '''
+        Runs on startup. Creates the ee, half, and bkg ROIs.
+        '''
         # Create EE ROI
         self.ee_roi = pg.CircleROI((0,0), size=100, scaleSnap = True, snapSize = 1, translateSnap=True)
         self.ee_roi.removeHandle(0)
@@ -40,11 +47,14 @@ class EE_Gui_Main_View(pg.ViewBox):
         self.addItem(self.bg_roi)
 
     def display_new_image(self, image: np.ndarray):
+        '''
+        Displays frame argument in the main view.
+        '''
         self.main_imi.setImage(image)
 
     def centroid(self, com = None):
         '''
-        Moves the EE ROI to the scipy center of mass of the current displayed image
+        Moves the EE ROI to the scipy center of mass of the current displayed image. Can take provided center of mass. If none provided, will calculate it here.
         '''
 
         if not com:
@@ -86,14 +96,23 @@ class EE_Gui_Main_View(pg.ViewBox):
         self.bg_roi.setVisible(True)
 
     def set_half_roi_pos(self):
+        '''
+        Repositions the half ROI to be in the center of the ee ROI
+        '''
         ee_x, ee_y = self.ee_roi.pos()
         ee_size = self.ee_roi.size()[0]
         half_size = self.half_roi.size()[0]
         self.half_roi.setPos(ee_x + (ee_size-half_size)/2, ee_y + (ee_size-half_size)/2)
 
     def set_half_roi_size(self, radius):
+        '''
+        Resizes the half ROI. Should only be accessed by a signal from the EE Worker.
+        '''
         self.half_roi.setSize(radius * 2, center=(0.5,0.5))
 
     def _set_centroid_button(self, button: QtWidgets.QPushButton):
+        '''
+        Sets centroid button to be used by centroid function.
+        '''
         self.centroid_button = button
     

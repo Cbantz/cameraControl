@@ -4,9 +4,8 @@ from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 
 class MainWindow(QtWidgets.QMainWindow):
 
-    ee_roi_created = QtCore.Signal(pg.ROI)
-    live_button_pressed = QtCore.Signal()
-    live_button_released = QtCore.Signal()
+    live_button_pressed = QtCore.Signal() # Emitted when the live button is toggled on.
+    live_button_released = QtCore.Signal() # Emitted when the live button toggle is released.
 
     def __init__(self):
         super().__init__(parent=None)
@@ -34,6 +33,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def live_button_clicked(self):
+        '''
+        Runs when live button is clicked. Manages state of toggle so the corresponding signal is sent.
+        '''
         if(self.live_cam_button.isChecked()):
             self.live_button_pressed.emit()
 

@@ -22,6 +22,9 @@ class dt_window(QtWidgets.QWidget):
 
 
 class movement_control_panel(QtWidgets.QGroupBox):
+    '''
+    Panel of simple control buttons for motors.
+    '''
     def __init__(self):
         super().__init__(parent=None)
         neg_fast = camera_move_button("\u21C7", -2)

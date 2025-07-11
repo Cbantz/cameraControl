@@ -4,10 +4,10 @@ import numpy as np
 from photutils.aperture import CircularAperture
 
 class EE_Worker(QtCore.QObject):
-    is_busy: bool = False
-    ee_ready = QtCore.Signal(float, float, float)
-    half_ready = QtCore.Signal(int)
-    completed = QtCore.Signal()
+    is_busy: bool = False # Can take a new frame
+    ee_ready = QtCore.Signal(float, float, float) # Results of calculations
+    half_ready = QtCore.Signal(int) # Results
+    completed = QtCore.Signal() # Used to check for a new frame
 
     def __init__(self, parent = None):
         super().__init__(parent)

@@ -8,14 +8,15 @@ import time
 
 class Camera(QtCore.QObject):
 
-    frame_ready = QtCore.Signal(np.ndarray)
-    com_ready = QtCore.Signal(tuple)
-    start_req = QtCore.Signal()
-    first_frame = QtCore.Signal()
+    frame_ready = QtCore.Signal(np.ndarray) # Emitted when a new frame has been processed, contains frame.
+    com_ready = QtCore.Signal(tuple) # Emitted when a new frame has been processed. Contains center of mass of frame.
+    start_req = QtCore.Signal() # Use to start camera
+    first_frame = QtCore.Signal() # Emitted with the first frame processed to help GUI set up for live view.
 
     def __init__(self, parent = None):
         super().__init__(parent)
         print("camera time")
+        # Initializations
         asi.init(r"C:\Program Files\ASIStudio\ASICamera2.dll")
         self.camera = asi.Camera(asi.list_cameras()[0])
         self.settings = Camera_Settings(self.camera)
@@ -42,8 +43,7 @@ class Camera(QtCore.QObject):
         Starts the camera live feed.
         '''
         print("Starting Live")
-        self.update_camera_settings()
-        self.timeout = self.settings.get_timeout()
+        self.update_camera_settings() # Set camera settings before running
         
         self.camera.start_video_capture()
 
@@ -51,7 +51,7 @@ class Camera(QtCore.QObject):
         
 
         while self.settings.is_active:
-            if(self.settings.is_active):
+            if(self.settings.is_active): # Break if setting.isactive has been switched to off
                 frame = self.camera.capture_video_frame(timeout=self.settings.get_timeout())
                 self.process_frame(frame)
             else:
@@ -59,6 +59,9 @@ class Camera(QtCore.QObject):
 
     
     def send_first_frame(self):
+        '''
+        Processes and send the first frame of a live view.
+        '''
         frame = self.camera.capture_video_frame(timeout=self.settings.get_timeout())
         self.process_frame(frame)
         self.first_frame.emit()
@@ -81,7 +84,7 @@ class Camera(QtCore.QObject):
         print(self.camera.get_control_value(asi.ASI_EXPOSURE)[0])
         frame_cap_end_time = time.time()
 
-        if self.bg_roi_slice is not None:
+        if self.bg_roi_slice is not None: # Only gets a new slive when array moved. For optimization.
             self.bg_roi_slice = self.bg_roi.getArraySlice(frame, self.imi)
         background = np.average(frame[self.bg_roi_slice])
         background_end_time = time.time()
@@ -112,7 +115,7 @@ class Camera(QtCore.QObject):
         for i in timing_data:
             print(f'{i}: {timing_data[i]}')
 
-        if self.settings.is_active:
+        if self.settings.is_active: # Only send processed frame if still active
             self.frame_ready.emit(bg_subbed_frame)
             self.com_ready.emit(com)
 
@@ -123,19 +126,31 @@ class Camera(QtCore.QObject):
         
 
     def end_live(self):
+        '''
+        Shuts down live feed
+        '''
         print("Ending Live Feed")
         self.settings.set_active(False)
         self.camera.stop_video_capture()
 
 
     def bg_array_moved(self):
+        '''
+        Tells the processor that the slice needs to be updated when bg roi is moved
+        '''
         self.bg_roi_slice = None
 
 
     def set_imi(self, imi: pg.ImageItem):
+        '''
+        Sets the Image Item to be used for processing.
+        '''
         self.imi = imi
     
     def set_bg_roi(self, roi: pg.ROI):
+        '''
+        Sets background ROI to be used for processing.
+        '''
         self.bg_roi = roi
         self.bg_roi_slice = None
         self.bg_roi.sigRegionChanged.connect(self.bg_array_moved)
@@ -144,7 +159,9 @@ class Camera(QtCore.QObject):
 
 
 class Camera_Settings(QtCore.QObject):
-
+    '''
+    Settings class that every camera object will have.
+    '''
     is_active: bool = False
     settings_changed = False
     bins: int = 4
@@ -157,10 +174,16 @@ class Camera_Settings(QtCore.QObject):
         self.camera = camera
 
     def set_active(self, should_be_active: bool):
+        '''
+        Sets the camera to an active or inactive state.
+        '''
         self.is_active = should_be_active
 
     def get_timeout(self):
-        self.timeout = (self.camera.get_control_value(asi.ASI_EXPOSURE)[0] * 2) + 500
+        '''
+        Returns the timeout setting of the camera.
+        '''
+        self.timeout = (self.camera.get_control_value(asi.ASI_EXPOSURE)[0] * 2) + 500 # Recommended in docs.
         return (self.timeout)
     
 
