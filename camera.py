@@ -35,6 +35,7 @@ class Camera(QtCore.QObject):
             self.camera.set_image_type(self.settings.image_type)
             self.camera.set_control_value(asi.ASI_EXPOSURE, self.settings.exposure)
             self.camera.set_control_value(asi.ASI_GAIN, self.settings.gain)
+            self.timeout = self.settings.get_timeout()
         except Exception as e:
             print("No Camera is Connected")
 
@@ -62,6 +63,7 @@ class Camera(QtCore.QObject):
         '''
         Processes and send the first frame of a live view.
         '''
+        self.update_camera_settings()
         frame = self.camera.capture_video_frame(timeout=self.settings.get_timeout())
         self.process_frame(frame)
         self.first_frame.emit()
@@ -81,7 +83,6 @@ class Camera(QtCore.QObject):
         settings_end_time = time.time()
 
         frame = self.camera.capture_video_frame(timeout=self.timeout)
-        print(self.camera.get_control_value(asi.ASI_EXPOSURE)[0])
         frame_cap_end_time = time.time()
 
         if self.bg_roi_slice is not None: # Only gets a new slive when array moved. For optimization.
@@ -111,9 +112,9 @@ class Camera(QtCore.QObject):
     "com_calculation_time": com_time
 }
 
-        print(f"Frame Ready: took {total_time}.")
-        for i in timing_data:
-            print(f'{i}: {timing_data[i]}')
+        # print(f"Frame Ready: took {total_time}.")
+        # for i in timing_data:
+        #     print(f'{i}: {timing_data[i]}')
 
         if self.settings.is_active: # Only send processed frame if still active
             self.frame_ready.emit(bg_subbed_frame)
@@ -183,7 +184,7 @@ class Camera_Settings(QtCore.QObject):
         '''
         Returns the timeout setting of the camera.
         '''
-        self.timeout = (self.camera.get_control_value(asi.ASI_EXPOSURE)[0] * 2) + 500 # Recommended in docs.
+        self.timeout = (self.camera.get_control_value(asi.ASI_EXPOSURE)[0] * 2000) + 500 # Recommended in docs.
         return (self.timeout)
     
 

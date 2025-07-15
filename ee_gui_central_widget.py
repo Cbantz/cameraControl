@@ -7,6 +7,7 @@ from ee_worker import EE_Worker
 from static_image_handler import Static_Image_Handler
 from camera import Camera
 from view_eegui import EE_Gui_Main_View
+from diff_gui import dt_window
 
 class EE_GUI_Central_Widget(QtWidgets.QWidget):
 
@@ -35,6 +36,8 @@ class EE_GUI_Central_Widget(QtWidgets.QWidget):
         self._setup_data_display()
         self._setup_ee_worker()
         self._setup_static_ih()
+        self._setup_diff_gui(dt_window())
+
 
 
     def start_static_im_show(self, filepath: str = "oat_lab_logo.fits"):
@@ -128,6 +131,8 @@ class EE_GUI_Central_Widget(QtWidgets.QWidget):
         self.view.ee_roi.sigRegionChanged.connect(self.view.set_half_roi_pos)
         self.view.ee_roi.sigRegionChanged.connect(self.calculate_ee)
 
+        
+
 
         
 
@@ -174,7 +179,14 @@ class EE_GUI_Central_Widget(QtWidgets.QWidget):
         self.camera.frame_ready.connect(self.process_new_frame)
         self.camera.com_ready.connect(self.view.centroid)
         self.camera.first_frame.connect(self.view.center_rois)
+        self.diff_gui.diff_tools.set_up_camera(self.camera)
 
+    
+    def _setup_diff_gui(self, gui: dt_window):
+        self.diff_gui = gui
+        self.grid_layout.addWidget(self.diff_gui, 1, 0, 1, 3)
+        self.view.crosshairs.set_diff_tools(self.diff_gui.diff_tools)
+        
 
 
 
@@ -184,9 +196,9 @@ class EE_GUI_Central_Widget(QtWidgets.QWidget):
 
 if __name__ == "__main__":
     app = pg.mkQApp()
-    camera = Camera()
+    #camera = Camera()
     widget = EE_GUI_Central_Widget()
-    widget._setup_camera(camera=camera)
+    #widget._setup_camera(camera=camera)
     widget.show()
 
     app.exec()

@@ -2,6 +2,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
 from scipy.ndimage import center_of_mass
 import numpy as np
+from viewcrosshairs import Crosshairs
 
 class EE_Gui_Main_View(pg.ViewBox):
     '''
@@ -14,6 +15,7 @@ class EE_Gui_Main_View(pg.ViewBox):
         self.main_imi = pg.ImageItem(axisOrder='row-major')
         self.addItem(self.main_imi)
         self.centroid_button = None
+        self.crosshairs = None
 
         self.create_rois()
         
@@ -45,6 +47,8 @@ class EE_Gui_Main_View(pg.ViewBox):
         self.addItem(self.ee_roi)
         self.addItem(self.half_roi)
         self.addItem(self.bg_roi)
+
+        self.display_crosshairs(1, 1, 1)
 
     def display_new_image(self, image: np.ndarray):
         '''
@@ -80,6 +84,7 @@ class EE_Gui_Main_View(pg.ViewBox):
         # ROI parameters
         roi_size = self.ee_roi.size()[0]
         roi_pos = ((y - roi_size) / 2, (x - roi_size) / 2)  # Centered position
+        self.display_crosshairs(x, y, 20)
 
         roi_bounds = pg.QtCore.QRectF(pg.QtCore.QPoint(0, 0), pg.QtCore.QPoint(y, x)) #ROI bounded to the image size.
         
@@ -115,4 +120,22 @@ class EE_Gui_Main_View(pg.ViewBox):
         Sets centroid button to be used by centroid function.
         '''
         self.centroid_button = button
-    
+
+    def display_crosshairs(self, x, y, width):
+        if(not self.crosshairs):
+            self.crosshairs = Crosshairs((x, y), width)
+            self.addItem(self.crosshairs.h_crosshair)
+            self.addItem(self.crosshairs.v_crosshair)
+        else:
+            self.removeItem(self.crosshairs.h_crosshair)
+            self.removeItem(self.crosshairs.v_crosshair)
+            self.crosshairs.set_size((x, y), width)
+            self.addItem(self.crosshairs.h_crosshair)
+            self.addItem(self.crosshairs.v_crosshair)
+
+
+if __name__ == "__main__":
+    app=pg.mkQApp()
+    view = EE_Gui_Main_View()
+    view.show
+    app.exec()

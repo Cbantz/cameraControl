@@ -39,11 +39,14 @@ class EE_Worker(QtCore.QObject):
             r_mid = (r_max+r_min)/2
             aperture = CircularAperture((np.shape(roi_region)[0]/2,np.shape(roi_region)[1]/2), r = r_mid)
             aperture_counts = aperture.do_photometry(roi_region, method='center')[0]
-            pc_enc = aperture_counts / ee
-            if(pc_enc > 0.5):
-                r_max = r_mid
-            else:
-                r_min = r_mid
+            try:
+                pc_enc = aperture_counts / ee
+                if(pc_enc > 0.5):
+                    r_max = r_mid
+                else:
+                    r_min = r_mid
+            except RuntimeWarning as e:
+                print("There are no counts enclosed")
         
         self.is_busy = False
         
