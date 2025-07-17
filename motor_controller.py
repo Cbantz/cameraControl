@@ -1,6 +1,5 @@
 import instruments as ik
 from pyqtgraph.Qt import QtWidgets, QtCore, QtGui
-from signals import signals as sig
 import numpy as np
 
 class Motor_Controller(QtCore.QObject):

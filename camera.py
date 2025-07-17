@@ -2,183 +2,70 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtWidgets, QtCore, QtGui
 import zwoasi as asi
 import numpy as np
-from signals import signals as sig
 from scipy.ndimage import center_of_mass
 import time
+from bg_roi import Background_ROI
 
-class Camera(QtCore.QObject):
-
-    frame_ready = QtCore.Signal(np.ndarray) # Emitted when a new frame has been processed, contains frame.
-    com_ready = QtCore.Signal(tuple) # Emitted when a new frame has been processed. Contains center of mass of frame.
+class CameraController(QtCore.QObject):
     start_req = QtCore.Signal() # Use to start camera
-    first_frame = QtCore.Signal() # Emitted with the first frame processed to help GUI set up for live view.
-
-    def __init__(self, parent = None):
+    def __init__(self, parent = None, bg_roi: Background_ROI = None):
         super().__init__(parent)
+        self.is_active: bool = False
         print("camera time")
         # Initializations
         asi.init(r"C:\Program Files\ASIStudio\ASICamera2.dll")
-        self.camera = asi.Camera(asi.list_cameras()[0])
-        self.settings = Camera_Settings(self.camera)
-        self.start_req.connect(self.start_live)
-        print("Camera Initialized")
-        
-
-    def update_camera_settings(self):
-        '''
-        Sets camera settings.
-        '''
-        print("Setting Camera Settings")
         try:
+            self.camera = asi.Camera(asi.list_cameras()[0])
+        except IndexError as ie:
+            print("No camera is connected. Camera controller will not function.", ie)
+            return
+        self.bg_roi = bg_roi
+        self.settings = Camera_Settings(self.camera)
 
-            self.camera.set_roi(bins=self.settings.bins)
-            self.camera.set_image_type(self.settings.image_type)
-            self.camera.set_control_value(asi.ASI_EXPOSURE, self.settings.exposure)
-            self.camera.set_control_value(asi.ASI_GAIN, self.settings.gain)
-            self.timeout = self.settings.get_timeout()
-        except Exception as e:
-            print("No Camera is Connected")
+        # Set Up Worker
+        self.worker = Camera_Worker(self.camera, self, self.settings, self.bg_roi)
+        self.worker_thread = QtCore.QThread()
+        self.worker.moveToThread(self.worker_thread)
+        self.worker_thread.start()
+        print("Camera Initialized")
 
-    def start_live(self):
+    def start_live_view(self):
+        self.set_active()
+        self.start_req.emit()
+
+    def set_active(self, enabled: bool = True):
         '''
-        Starts the camera live feed.
+        Sets the camera to an active or inactive state.
         '''
-        print("Starting Live")
-        self.update_camera_settings() # Set camera settings before running
-        
-        self.camera.start_video_capture()
-
-        self.send_first_frame()
-        
-
-        while self.settings.is_active:
-            if(self.settings.is_active): # Break if setting.isactive has been switched to off
-                frame = self.camera.capture_video_frame(timeout=self.settings.get_timeout())
-                self.process_frame(frame)
-            else:
-                break
-
-    
-    def send_first_frame(self):
-        '''
-        Processes and send the first frame of a live view.
-        '''
-        self.update_camera_settings()
-        frame = self.camera.capture_video_frame(timeout=self.settings.get_timeout())
-        self.process_frame(frame)
-        self.first_frame.emit()
-        
-
-        
-        
-    def process_frame(self, frame):
-        '''
-        Takes and processes a frame before sending it to be displayed in the main window.
-        '''
-
-        start_time = time.time()
-
-        if(self.settings.settings_changed):
-            self.update_camera_settings()
-        settings_end_time = time.time()
-
-        frame = self.camera.capture_video_frame(timeout=self.timeout)
-        frame_cap_end_time = time.time()
-
-        if self.bg_roi_slice is not None: # Only gets a new slive when array moved. For optimization.
-            self.bg_roi_slice = self.bg_roi.getArraySlice(frame, self.imi)
-        background = np.average(frame[self.bg_roi_slice])
-        background_end_time = time.time()
-
-        bg_subbed_frame = frame - background
-        bg_subbed_frame[bg_subbed_frame < 0] = 0
-        background_sub_end_time = time.time()
-
-        com = center_of_mass(bg_subbed_frame)
-        end_time = time.time()
-        total_time = end_time - start_time
-        frame_cap_time = frame_cap_end_time - settings_end_time
-        background_time = background_end_time - frame_cap_end_time
-        background_sub_time = background_sub_end_time -background_end_time
-        com_time = end_time - background_sub_end_time
-        settings_time = settings_end_time-start_time
-
-        timing_data = {
-    "settings_time": settings_time,  # Assuming 'com' is defined elsewhere in your code
-    "total_time": total_time, # Assuming 'start_time' and 'end_time' are defined
-    "frame_capture_time": frame_cap_time, # Assuming 'frame_cap_end_time' is defined
-    "background_time": background_time, # Assuming 'background_end_time' is defined
-    "background_subtraction_time": background_sub_time, # Assuming 'background_sub_end_time' is defined
-    "com_calculation_time": com_time
-}
-
-        # print(f"Frame Ready: took {total_time}.")
-        # for i in timing_data:
-        #     print(f'{i}: {timing_data[i]}')
-
-        if self.settings.is_active: # Only send processed frame if still active
-            self.frame_ready.emit(bg_subbed_frame)
-            self.com_ready.emit(com)
-
-
-        
-
-        
-        
-
-    def end_live(self):
-        '''
-        Shuts down live feed
-        '''
-        print("Ending Live Feed")
-        self.settings.set_active(False)
-        self.camera.stop_video_capture()
+        self.is_active = enabled
 
 
     def bg_array_moved(self):
         '''
         Tells the processor that the slice needs to be updated when bg roi is moved
         '''
-        self.bg_roi_slice = None
-
-
-    def set_imi(self, imi: pg.ImageItem):
-        '''
-        Sets the Image Item to be used for processing.
-        '''
-        self.imi = imi
+        if self.is_active:
+            self.bg_roi_slice = self.bg_roi.getArraySlice(self.imi.image, self.imi)
     
-    def set_bg_roi(self, roi: pg.ROI):
-        '''
-        Sets background ROI to be used for processing.
-        '''
-        self.bg_roi = roi
-        self.bg_roi_slice = None
-        self.bg_roi.sigRegionChanged.connect(self.bg_array_moved)
-
-
 
 
 class Camera_Settings(QtCore.QObject):
     '''
     Settings class that every camera object will have.
     '''
-    is_active: bool = False
-    settings_changed = False
     bins: int = 4
     image_type = asi.ASI_IMG_RAW16
     exposure = 250
     gain = 200
     
-    def __init__(self, camera: 'Camera', parent = None):
+    def __init__(self, camera: asi.Camera, parent = None):
         super().__init__(parent)
         self.camera = camera
-
-    def set_active(self, should_be_active: bool):
-        '''
-        Sets the camera to an active or inactive state.
-        '''
-        self.is_active = should_be_active
+        self.camera.set_roi(bins=self.settings.bins)
+        self.camera.set_image_type(self.settings.image_type)
+        self.camera.set_control_value(asi.ASI_EXPOSURE, self.settings.exposure)
+        self.camera.set_control_value(asi.ASI_GAIN, self.settings.gain)
+        self.timeout = self.settings.get_timeout()
 
     def get_timeout(self):
         '''
@@ -187,9 +74,81 @@ class Camera_Settings(QtCore.QObject):
         self.timeout = (self.camera.get_control_value(asi.ASI_EXPOSURE)[0] * 2000) + 500 # Recommended in docs.
         return (self.timeout)
     
+    def set_exposure(self, exposure: int):
+        """
+        Sets camera exposure (microseconds)
+        """
+        self.exposure = exposure
+        self.settings_changed = True
+        print(f"Exposure set to {self.exposure}")
+
+    def set_gain(self, gain: int):
+        
+        self.gain = gain
+        self.settings_changed = True
+        print(f"Gain set to {self.gain}")
+
+
+class Camera_Worker(QtCore.QObject):
+    frame_ready = QtCore.Signal(np.ndarray) # Emitted when a new frame has been processed, contains frame.
+    com_ready = QtCore.Signal(tuple) # Emitted when a new frame has been processed. Contains center of mass of frame.
+    first_frame = QtCore.Signal() # Emitted with the first frame processed to help GUI set up for live view.
+    frame_raw_stats = QtCore.Signal(dict)
+
+    def __init__(self, camera: asi.Camera, camera_controller : CameraController, settings: Camera_Settings = None, bg_roi: Background_ROI = None, parent = None):
+        super().__init__(parent)
+        self.settings = settings
+        self.camera = camera
+        self.controller = camera_controller
+        self.controller.start_req.connect(self.start_live)
+        self.bg_roi = bg_roi
+
+    def start_live(self):
+        print("Starting live view")
+        self.camera.start_video_capture()
+        results = self.capture_and_process_frame()
+        if self.controller.is_active:
+            self.emit_results(results[0], results[1], results[2])
+            self.first_frame.emit()
+            self.run_live()
+
+        else:
+            self.end_live()
+
+    def run_live(self):
+        results = self.capture_and_process_frame()
+        if self.controller.is_active:
+            self.emit_results(results[0], results[1], results[2])
+            self.run_live()
+
+        else:
+            self.end_live()
+
+    def capture_and_process_frame(self) -> tuple[tuple, np.ndarray, dict]:
+        frame = self.camera.capture_video_frame(timeout=self.settings.get_timeout())
+        raw_frame_stats = {"Min": np.min(frame), "Max": np.max(frame)}
+        background_counts = np.average(frame[self.controller.bg_roi_slice])
+        bg_subbed_frame = frame - background_counts
+        bg_subbed_frame[bg_subbed_frame < 0] = 0
+        com = center_of_mass(bg_subbed_frame)
+        com_adjusted = (com[1], com[0])
+        return(com_adjusted, bg_subbed_frame, raw_frame_stats)
+    
+    def emit_results(self, com: tuple, frame: np.ndarray, rfs: dict):
+        self.frame_ready.emit(frame)
+        self.com_ready.emit(com)
+        self.frame_raw_stats.emit(rfs)
+    
+    def end_live(self):
+        print("Ending live view")
+        self.camera.stop_video_capture()
+
+
 
 if __name__ == "__main__":
-    camera = Camera()
-    camera.start_req.emit()
+    app = pg.mkQApp()
+    object = CameraController()
+    object.start_live_view()
+    app.exec()
 
         

@@ -3,8 +3,7 @@ from pyqtgraph.Qt import QtWidgets, QtCore, QtGui
 from astropy.io import fits
 from scipy.ndimage import center_of_mass
 import numpy as np
-from signals import signals as sig
-import ee_gui_main_win, ee_gui_central_widget
+import main_win_gui_oat, ee_gui_central_widget
 from camera import Camera
 
 
@@ -13,7 +12,7 @@ class EEGUI_Manager(QtCore.QObject):
         super().__init__(parent = None)
         
         # Initialize main components
-        self.main_win = ee_gui_main_win.MainWindow()
+        self.main_win = main_win_gui_oat.MainWindow()
         print("Main Window Initialized")
         self.central_widget = ee_gui_central_widget.EE_GUI_Central_Widget()
         print("Central Widget Initialized")

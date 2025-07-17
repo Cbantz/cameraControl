@@ -1,33 +1,40 @@
 import numpy as np
 from pyqtgraph.Qt import QtCore
-from camera import Camera
+from camera import CameraController
 from motor_controller import Motor_Controller
 
 class Diffractometer_Tools(QtCore.QObject):
     '''
-    Collection of utilities to make use of the diffractometer motors and, optionally, a camera.
+    Collection of utilities to make use of the diffractometer motors and, a camera.
     '''
     h_enter_center = QtCore.Signal()
     h_exit_center = QtCore.Signal()
     v_enter_center = QtCore.Signal()
     v_exit_center = QtCore.Signal()
-    def __init__(self):
+    def __init__(self, camera: CameraController):
         super().__init__(parent=None)
         self.centered_tolerance = 20
         self.frame_dims = None
         self.is_y_centered = False
         self.is_x_centered = False
+
+        # Set up Motor
+        try:
+            self.motor = Motor_Controller()
+        except Exception as e:
+            print(e)
+
+        # Set up Camera
+        if camera:
+            self.camera = camera
+            self.camera.worker.com_ready.connect(self.com_received)
+            self.camera.worker.frame_ready.connect(self.frame_received)
+            self.cam.frame_ready.connect(self.frame_received)
+        else:
+            print("No camera connected to Diffractometer tools")
         
-    def set_up_camera(self, camera: Camera):
-        print("Camera connected to dt")
-        self.cam = camera
-        self.cam.com_ready.connect(self._com_received)
-        self.cam.frame_ready.connect(self.frame_received)
 
-    def set_up_motor(self, motor: Motor_Controller):
-        self.motor = motor
-
-    def _com_received(self, com):
+    def com_received(self, com):
         '''
         Runs whenever the camera gets a new center of mass processed.
         '''

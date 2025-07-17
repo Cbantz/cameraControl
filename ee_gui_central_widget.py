@@ -2,19 +2,20 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
 import numpy as np
 from scipy.ndimage import center_of_mass
-from data_display_widget_ee_gui import Data_Display_Widget
+from data_display_widget import Data_Display_Widget
 from ee_worker import EE_Worker
 from static_image_handler import Static_Image_Handler
-from camera import Camera
-from view_eegui import EE_Gui_Main_View
-from diff_gui import dt_window
+from camera import CameraController
+from Viewbox import EE_Gui_Main_View
+from diffractometer_controller_gui import dt_window
 
 class EE_GUI_Central_Widget(QtWidgets.QWidget):
 
     calculate_ee_req = QtCore.Signal() # Signal calls to ee_worker to calculate ee on a new frame.
 
-    def __init__(self, parent=None):
+    def __init__(self, camera: CameraController = None, parent=None):
         super().__init__(parent)
+                                                                                                                                  
 
 
         # Set Layout
@@ -25,13 +26,12 @@ class EE_GUI_Central_Widget(QtWidgets.QWidget):
         # Set up main viewing widget
         self.view = EE_Gui_Main_View()
         self._setup_view()
-
+        self.camera = camera
 
         # Other variables and children
         self.ee_worker = EE_Worker()
-        self.camera = None
+        
         self.static_ih = Static_Image_Handler()
-        self.im_source = None
         self.frame_queued = False
         self._setup_data_display()
         self._setup_ee_worker()
@@ -84,7 +84,7 @@ class EE_GUI_Central_Widget(QtWidgets.QWidget):
         '''
         Destination for all new frames to be displayed. Displays new image and runs an EE calculation.
         '''
-        self.view.display_new_image(frame)
+        self.view.main_imi.setNewImage(frame)
         self.calculate_ee()
 
 
@@ -168,7 +168,7 @@ class EE_GUI_Central_Widget(QtWidgets.QWidget):
         self.static_ih.static_frame_ready.connect(self.process_new_frame)
         self.start_static_im_show()
 
-    def _setup_camera(self, camera: Camera):
+    def _setup_camera(self, camera: CameraController):
         '''
         Runs at startup: Assigns variables and makes connections for the camera.
         '''

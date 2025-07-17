@@ -3,7 +3,6 @@ from pyqtgraph.Qt import QtWidgets, QtCore, QtGui
 from camera import Camera
 from motor_controller import Motor_Controller
 from EEGUI import EEGUI_Manager
-from signals import signals as sig
 from diffractometer_tools import Diffractometer_Tools as dt
 
 class Organizer(QtCore.QObject):
@@ -67,8 +66,7 @@ class Organizer(QtCore.QObject):
     def get_window_instance(self):
         return self.window
     
-    def get_signals_instance(self):
-        return self.signals
+
     
 
     def closeEvent(self, event):
