@@ -5,10 +5,11 @@ import numpy as np
 from scipy.ndimage import center_of_mass
 import time
 from bg_roi import Background_ROI
+from roi_manager import ROI_Manager
 
 class CameraController(QtCore.QObject):
     start_req = QtCore.Signal() # Use to start camera
-    def __init__(self, parent = None, bg_roi: Background_ROI = None):
+    def __init__(self, parent = None, roi_manager: ROI_Manager = None):
         super().__init__(parent)
         self.is_active: bool = False
         print("camera time")
@@ -19,7 +20,8 @@ class CameraController(QtCore.QObject):
         except IndexError as ie:
             print("No camera is connected. Camera controller will not function.", ie)
             return
-        self.bg_roi = bg_roi
+        if roi_manager:
+            self.bg_roi = roi_manager.bg_roi
         self.settings = Camera_Settings(self.camera)
 
         # Set Up Worker
@@ -28,6 +30,7 @@ class CameraController(QtCore.QObject):
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.start()
         print("Camera Initialized")
+        self.start_live_view()
 
     def start_live_view(self):
         self.set_active()
@@ -61,11 +64,11 @@ class Camera_Settings(QtCore.QObject):
     def __init__(self, camera: asi.Camera, parent = None):
         super().__init__(parent)
         self.camera = camera
-        self.camera.set_roi(bins=self.settings.bins)
-        self.camera.set_image_type(self.settings.image_type)
-        self.camera.set_control_value(asi.ASI_EXPOSURE, self.settings.exposure)
-        self.camera.set_control_value(asi.ASI_GAIN, self.settings.gain)
-        self.timeout = self.settings.get_timeout()
+        self.camera.set_roi(bins=self.bins)
+        self.camera.set_image_type(self.image_type)
+        self.camera.set_control_value(asi.ASI_EXPOSURE, self.exposure)
+        self.camera.set_control_value(asi.ASI_GAIN, self.gain)
+        self.timeout = self.get_timeout()
 
     def get_timeout(self):
         '''
@@ -101,7 +104,7 @@ class Camera_Worker(QtCore.QObject):
         self.camera = camera
         self.controller = camera_controller
         self.controller.start_req.connect(self.start_live)
-        self.bg_roi = bg_roi
+
 
     def start_live(self):
         print("Starting live view")

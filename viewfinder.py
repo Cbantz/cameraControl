@@ -6,29 +6,26 @@ from camera import CameraController
 from diffractometer_tools import Diffractometer_Tools
 from data_display_widget import Data_Display_Widget
 from viewfinder_buttons import ViewfinderButtons
+from displayimageitem import Display_Imi
 
 class Viewfinder(pg.GraphicsLayoutWidget):
     """
-    Displays a feed from a camera as well as stats from the image and ROIs inside.
+    Displays a feed from a camera with a histogram
     """
-    def __init__(self, roi_manager: ROI_Manager = None, camera: CameraController = None, diff_tools: Diffractometer_Tools = None):
+    def __init__(self, roi_manager: ROI_Manager = None, camera: CameraController = None, diff_tools: Diffractometer_Tools = None, vf_buttons : ViewfinderButtons = None, imi: Display_Imi = None):
         super().__init__(parent=None)
-        # Set Layout
-        self.grid_layout = QtWidgets.QGridLayout()
-        self.setLayout(self.grid_layout)
 
         # Instantiate Children
-        self.vf_buttons = ViewfinderButtons()
-        self.viewbox = Viewbox(ee_roi=roi_manager.ee_roi, bg_roi=roi_manager.bg_roi, diff_tools=diff_tools, centroid_button=self.vf_buttons.centroid_button)
-        self.hist = pg.HistogramLUTItem(self.viewbox.main_imi)
-        self.stats_display = Data_Display_Widget(roi_manager = roi_manager, camera = camera)
-
-        # Connect Signals
-        # From VF Buttons
-        self.vf_buttons.reset_roi_button.clicked(self.viewbox.center_rois)
+        
+        self.viewbox = Viewbox(roi_manager=roi_manager, diff_tools=diff_tools, vf_buttons = vf_buttons, imi=imi)
+        self.hist = pg.HistogramLUTItem(imi)
+        self.hist.setHistogramRange(0, 65545) # Max pixel value in RAW16
 
         # Arrange in layout
-        self.addItem
+        self.addItem(self.viewbox)
+        self.addItem(self.hist)
+
+        
 
 
 if __name__ == "__main__":

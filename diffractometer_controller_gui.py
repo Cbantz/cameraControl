@@ -6,48 +6,47 @@ from diffractometer_tools import Diffractometer_Tools
 
 class dt_window(QtWidgets.QWidget):
 
-    def __init__(self, diff_tools : Diffractometer_Tools = Diffractometer_Tools()):
+    def __init__(self, diff_tools : Diffractometer_Tools = None):
         super().__init__(parent=None)
-
-        self.diff_tools : Diffractometer_Tools = diff_tools
-        
-
-
-        self.movement_panel = movement_control_panel()
-        self.set_up_motor(Motor_Controller("COM6"))
-        
-
         layout = QtWidgets.QGridLayout()
         self.setLayout(layout)
+        
+        if(diff_tools and diff_tools.motor):
+            self.diff_tools : Diffractometer_Tools = diff_tools
+            self.self.motor = diff_tools.motor
+        self.movement_panel = movement_control_panel()
+        
+        
+
+
 
         layout.addWidget(self.movement_panel, 0, 0, 1, 1)
 
-    def set_up_motor(self, motor: Motor_Controller):
+    def set_up_motor_control_buttons(self):
         '''
         Sets motor to be used and connects signals to it.
         '''
-        self.motor : Motor_Controller = motor
 
         for button in self.movement_panel.cam_indef_move_buttons:
-            button.start.connect(motor.start_move_cam_indef)
-            button.stop.connect(motor.end_move_cam)
+            button.start.connect(self.motor.start_move_cam_indef)
+            button.stop.connect(self.motor.end_move_cam)
 
         for button in self.movement_panel.grating_indef_move_buttons:
-            button.start.connect(motor.start_move_grating)
-            button.stop.connect(motor.end_move_grating)
+            button.start.connect(self.motor.start_move_grating)
+            button.stop.connect(self.motor.end_move_grating)
 
         for button in self.movement_panel.cam_rel_move_buttons:
-            button.rel_move.connect(motor.rel_move_cam)
+            button.rel_move.connect(self.motor.rel_move_cam)
 
         for button in self.movement_panel.grating_rel_buttons:
-            button.rel_move.connect(motor.rel_move_grating)
+            button.rel_move.connect(self.motor.rel_move_grating)
 
 
 
-        self.movement_panel.rel_move_cam.connect(motor.rel_move_cam)
-        self.movement_panel.rel_move_grating.connect(motor.rel_move_grating)
+        self.movement_panel.rel_move_cam.connect(self.motor.rel_move_cam)
+        self.movement_panel.rel_move_grating.connect(self.motor.rel_move_grating)
 
-        self.movement_panel.abort_button.clicked.connect(motor.abort_movement)
+        self.movement_panel.abort_button.clicked.connect(self.motor.abort_movement)
 
 
 class movement_control_panel(QtWidgets.QGroupBox):
@@ -60,7 +59,7 @@ class movement_control_panel(QtWidgets.QGroupBox):
         super().__init__(parent=None)
 
         section_header_font = QtGui.QFont()
-        section_header_font.setPointSize(20)
+        section_header_font.setPointSize(14)
         camera_section_label = QtWidgets.QLabel("Camera Motor Controls")
         camera_section_label.setMinimumHeight(20)
         camera_section_label.setFont(section_header_font)
@@ -106,7 +105,7 @@ class movement_control_panel(QtWidgets.QGroupBox):
             camera_move_buttons_layout.addWidget(button)
 
         grating_section_label = QtWidgets.QLabel("Grating Motor Controls")
-        grating_section_label.setMinimumHeight(20)
+        grating_section_label.setMinimumHeight(14)
         grating_section_label.setFont(section_header_font)
 
 
@@ -195,7 +194,7 @@ class motor_move_button(QtWidgets.QPushButton):
 
     def __init__(self, text:str, velocity: float):
         super().__init__(parent=None)
-        self.setFixedHeight(65)
+        self.setFixedHeight(55)
         self.velocity = velocity
         self.setText(text)
         self.pressed.connect(self._button_pressed)
@@ -213,7 +212,7 @@ class motor_rel_move_button(QtWidgets.QPushButton):
     rel_move = QtCore.Signal(float)
     def __init__(self, distance: float, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(50)
+        self.setFixedHeight(45)
         sign = "+" if distance > 0 else ""
         self.setText(f"{sign}{distance}")
         self.distance = distance

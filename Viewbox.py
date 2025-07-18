@@ -1,23 +1,25 @@
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
 import numpy as np
-from viewcrosshairs import Crosshairs
-from eeroi import EE_ROI, Half_ROI
-from bg_roi import Background_ROI
+from centering_crosshairs import Crosshairs
 from displayimageitem import Display_Imi
 from diffractometer_tools import Diffractometer_Tools
 from viewfinder_buttons import ViewfinderButtons
 from roi_manager import ROI_Manager
+from viewfinder_buttons import ViewfinderButtons
+from camera import CameraController
+from displayimageitem import Display_Imi
 
 class Viewbox(pg.ViewBox):
     '''
     Viewbox containing rois and crosshairs
     '''
-    def __init__(self, roi_manager: ROI_Manager = None, crosshairs : Crosshairs = None, diff_tools : Diffractometer_Tools = None, centroid_button: QtWidgets.QPushButton = None):
+    def __init__(self, roi_manager: ROI_Manager = None, diff_tools : Diffractometer_Tools = None, vf_buttons : ViewfinderButtons = None, imi: Display_Imi = None):
         super().__init__(parent=None, invertY=True)
 
         # Components
-        self.main_imi = Display_Imi()
+        if imi:
+            self.imi=imi
         
         #Set up ROIs
         if roi_manager:
@@ -27,18 +29,23 @@ class Viewbox(pg.ViewBox):
             self.addItem(self.ee_roi)
             self.addItem(self.half_roi)
         else:
-            print("No ROI Manager Passed to Viewbox")
+            print("No ROI Manager connected to Viewbox")
         
         # Set up Centroid Button
-        if centroid_button:
-            self.centroid_button = centroid_button
+        if vf_buttons:
+            self.centroid_button = vf_buttons.centroid_button
 
         else:
-            print("No Centroid Button connected to Viewbox")
+            print("No Viewfinder Buttons connected to Viewbox")
 
-        self.crosshairs = crosshairs
+        # Set up Crosshairs
+        if diff_tools:
+            self.addItem(diff_tools.crosshairs.h_crosshair)
+            self.addItem(diff_tools.crosshairs.v_crosshair)
+        else:
+            print("No Diffractometer Tools connected to Viewbox")
 
-        self.addItem(self.main_imi)
+        self.addItem(self.imi)
         
 
     def centroid(self, com = None):
@@ -47,7 +54,7 @@ class Viewbox(pg.ViewBox):
         '''
 
         if not com:
-            self.ee_roi.set_center_pos(self.main_imi.com()) # Set center of ee_roi to com of image item
+            self.ee_roi.set_center_pos(self.imi.com()) # Set center of ee_roi to com of image item
 
         
         if self.centroid_button.isChecked():
@@ -59,7 +66,7 @@ class Viewbox(pg.ViewBox):
         '''
 
         print("Arranging ROIs")
-        x,y = np.shape(self.main_imi.dims) 
+        x,y = np.shape(self.imi.dims) 
 
         # ROI parameters
         self.display_crosshairs(x, y, 20)
@@ -68,7 +75,7 @@ class Viewbox(pg.ViewBox):
         
         # ROI centered in image
         self.ee_roi.set_center_pos(x/2, y/2)
-        self.bg_roi.set_in_corner("BR", self.main_imi.dims())
+        self.bg_roi.set_in_corner("BR", self.imi.dims())
 
         # Set ROI Bounds
         self.ee_roi.maxBounds = roi_bounds

@@ -2,8 +2,8 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
 
 class Background_ROI(pg.RectROI):
-    def __init__(self, pos, size, centered=False, sideScalers=False, **args):
-        super().__init__(pos, size, centered, sideScalers, **args)
+    def __init__(self, pos, size = (100, 100), centered=False, sideScalers=False):
+        super().__init__(pos, size, centered=centered, sideScalers=sideScalers)
 
     def set_in_corner(self, corner: str, dims: tuple) -> None:
         size_x = self.size.x()

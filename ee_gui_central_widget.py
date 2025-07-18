@@ -3,7 +3,7 @@ from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
 import numpy as np
 from scipy.ndimage import center_of_mass
 from data_display_widget import Data_Display_Widget
-from ee_worker import EE_Worker
+from ee_processor import EE_Worker
 from static_image_handler import Static_Image_Handler
 from camera import CameraController
 from Viewbox import EE_Gui_Main_View

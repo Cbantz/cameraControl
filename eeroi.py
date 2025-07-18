@@ -3,14 +3,14 @@ from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
 import numpy as np
 
 class EE_ROI(pg.CircleROI):
-    def __init__(self, pos, size=None, radius=None, scaleSnap=True, translateSnap=True):
-        super().__init__(pos, size, radius, scaleSnap, translateSnap)
+    def __init__(self, pos, size=None, radius=100, scaleSnap=True, translateSnap=True):
+        super().__init__(pos, size, radius=radius, scaleSnap=scaleSnap, translateSnap=translateSnap)
         self.snapSize = 1
         self.removeHandle(0)
-        self.ee_roi.addScaleHandle((0, 0), (0.5, 0.5), lockAspect=True)
-        self.ee_roi.addScaleHandle((1, 0), (0.5, 0.5), lockAspect=True)
-        self.ee_roi.addScaleHandle((0, 1), (0.5, 0.5), lockAspect=True)
-        self.ee_roi.addScaleHandle((1, 1), (0.5, 0.5), lockAspect=True)
+        self.addScaleHandle((0, 0), (0.5, 0.5), lockAspect=True)
+        self.addScaleHandle((1, 0), (0.5, 0.5), lockAspect=True)
+        self.addScaleHandle((0, 1), (0.5, 0.5), lockAspect=True)
+        self.addScaleHandle((1, 1), (0.5, 0.5), lockAspect=True)
         self.half_roi = Half_ROI(pos, size, radius, ee_roi=self)
         self.sigRegionChanged.connect(self.half_roi.center_rel_ee)
 
@@ -28,7 +28,7 @@ class EE_ROI(pg.CircleROI):
 
 class Half_ROI(pg.CircleROI):
     def __init__(self, pos, size=None, radius=None, movable=False, ee_roi: EE_ROI = None):
-        super().__init__(pos, size, radius, movable)
+        super().__init__(pos, size, radius=radius, movable=movable)
         self.removeHandle(0)
         self.ee_roi = ee_roi
     
