@@ -9,12 +9,24 @@ from displayimageitem import Display_Imi
 class EE_Processor(QtCore.QObject):
     calc_req = QtCore.Signal()
     is_requested: bool = False
-    def __init__(self, camera : CameraController = None, roi_manager: ROI_Manager = None, imi: Display_Imi = None):
+    def __init__(self, camera : CameraController = None, roi_manager: ROI_Manager = None):
         super().__init__(parent = None)
+        if camera:
+            imi=camera.imi
+            imi.sigImageChanged.connect(self.request)
+        else:
+            print("No camera connected to EE Processor")
+            imi=None
+        if roi_manager:
+            ee_roi = roi_manager.ee_roi
+            ee_roi.sigRegionChanged.connect(self.request)
+        else:
+            print("No ROI Manager connected to EE Processor")
         self.worker = Worker(roi_manager=roi_manager, imi=imi, processor=self)
         self.worker_thread = QtCore.QThread()
         self.worker.moveToThread(self.worker_thread)
         self.worker.completed.connect(self.check_up_to_date)
+        self.worker_thread.start()
 
     def request(self):
         if  self.worker.is_busy:
@@ -27,6 +39,8 @@ class EE_Processor(QtCore.QObject):
         if self.is_requested:
             self.calc_req.emit()
             self.is_requested = False
+    
+
     
     
 
@@ -53,9 +67,11 @@ class Worker(QtCore.QObject):
             processor.calc_req.connect(self.calculate_ee)
         else:
             print("No Processor connected to EE Worker")
+
             
 
     def calculate_ee(self):
+
 
         frame = self.imi.image
         self.is_busy = True
@@ -87,8 +103,9 @@ class Worker(QtCore.QObject):
                 r_mid = r_max
         
         self.is_busy = False
-        
+
         self.half_ready.emit(r_mid)
+        self.ee_roi.half_roi.resize(r_mid)
         self.ee_ready.emit(ee, ee_pc_enc, total_sum)
         self.completed.emit()
         

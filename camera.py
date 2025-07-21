@@ -4,8 +4,9 @@ import zwoasi as asi
 import numpy as np
 from scipy.ndimage import center_of_mass
 import time
-from bg_roi import Background_ROI
 from roi_manager import ROI_Manager
+from displayimageitem import Display_Imi
+from bg_roi import Background_ROI
 
 class CameraController(QtCore.QObject):
     start_req = QtCore.Signal() # Use to start camera
@@ -22,7 +23,9 @@ class CameraController(QtCore.QObject):
             return
         if roi_manager:
             self.bg_roi = roi_manager.bg_roi
+            self.bg_roi.sigRegionChanged.connect(self.bg_array_moved)
         self.settings = Camera_Settings(self.camera)
+        
 
         # Set Up Worker
         self.worker = Camera_Worker(self.camera, self, self.settings, self.bg_roi)
@@ -31,6 +34,10 @@ class CameraController(QtCore.QObject):
         self.worker_thread.start()
         print("Camera Initialized")
         self.start_live_view()
+
+        # Set up display
+        self.imi = Display_Imi()
+        self.worker.frame_ready.connect(self.imi.setNewImage)
 
     def start_live_view(self):
         self.set_active()
@@ -48,7 +55,10 @@ class CameraController(QtCore.QObject):
         Tells the processor that the slice needs to be updated when bg roi is moved
         '''
         if self.is_active:
-            self.bg_roi_slice = self.bg_roi.getArraySlice(self.imi.image, self.imi)
+            self.bg_roi_slice = self.bg_roi.getArraySlice(self.imi.image, self.imi)[0]
+
+
+            
     
 
 
@@ -109,11 +119,13 @@ class Camera_Worker(QtCore.QObject):
     def start_live(self):
         print("Starting live view")
         self.camera.start_video_capture()
-        results = self.capture_and_process_frame()
+        results = self.capture_and_process_frame(bg_sub=False)
         if self.controller.is_active:
             self.emit_results(results[0], results[1], results[2])
             self.first_frame.emit()
-            self.run_live()
+            self.thread().sleep(5)
+            while self.controller.is_active:
+                self.run_live()
 
         else:
             self.end_live()
@@ -122,20 +134,25 @@ class Camera_Worker(QtCore.QObject):
         results = self.capture_and_process_frame()
         if self.controller.is_active:
             self.emit_results(results[0], results[1], results[2])
-            self.run_live()
 
         else:
             self.end_live()
 
-    def capture_and_process_frame(self) -> tuple[tuple, np.ndarray, dict]:
+    def capture_and_process_frame(self, bg_sub: bool = True) -> tuple[tuple, np.ndarray, dict]:
         frame = self.camera.capture_video_frame(timeout=self.settings.get_timeout())
         raw_frame_stats = {"Min": np.min(frame), "Max": np.max(frame)}
-        background_counts = np.average(frame[self.controller.bg_roi_slice])
-        bg_subbed_frame = frame - background_counts
-        bg_subbed_frame[bg_subbed_frame < 0] = 0
-        com = center_of_mass(bg_subbed_frame)
-        com_adjusted = (com[1], com[0])
-        return(com_adjusted, bg_subbed_frame, raw_frame_stats)
+        if bg_sub:
+            background_counts = np.average(frame[self.controller.bg_roi_slice])
+            bg_subbed_frame = frame - background_counts
+            bg_subbed_frame[bg_subbed_frame < 0] = 0
+            com = center_of_mass(bg_subbed_frame)
+            com_adjusted = (com[1], com[0])
+            return(com_adjusted, bg_subbed_frame, raw_frame_stats)
+        
+        else:
+            com = center_of_mass(frame)
+            com_adjusted = (com[1], com[0])
+            return(com_adjusted, frame, raw_frame_stats)
     
     def emit_results(self, com: tuple, frame: np.ndarray, rfs: dict):
         self.frame_ready.emit(frame)

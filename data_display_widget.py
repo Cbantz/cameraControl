@@ -3,20 +3,21 @@ from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import numpy as np
 from roi_manager import ROI_Manager
 from ee_processor import EE_Processor
+from camera import CameraController
 
 class Data_Display_Widget(QtWidgets.QWidget):
     '''
     Widget that displays stats on things visible in viewbox
     '''
-    def __init__(self, parent = None, roi_manager: ROI_Manager = None, ee_processor: EE_Processor =None):
+    def __init__(self, parent = None, roi_manager: ROI_Manager = None, ee_processor: EE_Processor =None, camera: CameraController = None):
         super().__init__(parent)
         layout = QtWidgets.QGridLayout()
         self.setLayout(layout)
 
         #Instantiate Children
         title = Stats_Title()
-        self.form = Data_Form(roi_manager=roi_manager, ee_processor=ee_processor)
-        
+        self.form = Data_Form(roi_manager=roi_manager, ee_processor=ee_processor, camera=camera)
+
 
 
         #Arrange Layout
@@ -29,15 +30,16 @@ class Data_Form(QtWidgets.QWidget):
     '''
     Form style widget, can display basic lines of text, both editable and not.
     '''
-    def __init__(self, parent = None, roi_manager: ROI_Manager = None, ee_processor: EE_Processor = None):
+    def __init__(self, parent = None, roi_manager: ROI_Manager = None, ee_processor: EE_Processor = None, camera: CameraController = None):
         super().__init__(parent)
         self.layout = QtWidgets.QFormLayout()
         self.setLayout(self.layout)
 
         #Instantiate Children
-        self._add_position_rows()
-        self._add_radius_row()
-        self._add_energy_stats()
+        self.add_position_rows()
+        self.add_radius_row()
+        self.add_energy_stats()
+        self.add_raw_frame_stats()
 
         if roi_manager:
             self.ee_roi = roi_manager.ee_roi
@@ -51,8 +53,13 @@ class Data_Form(QtWidgets.QWidget):
         else:
             print("EE Processor not connected to Data Form")
 
+        if camera:
+            camera.worker.frame_raw_stats.connect(self.set_frame_stats)
+        else:
+            print("No Camera connected to Data Form")
 
-    def _add_position_rows(self):
+
+    def add_position_rows(self):
         
         self.roi_pos_x = QtWidgets.QLineEdit()
         self.roi_pos_y = QtWidgets.QLineEdit()
@@ -60,16 +67,23 @@ class Data_Form(QtWidgets.QWidget):
         self.layout.addRow("ROI Pos X: ", self.roi_pos_x)
         self.layout.addRow("ROI Pos Y: ", self.roi_pos_y)
 
-    def _add_radius_row(self):
+    def add_radius_row(self):
         self.roi_radius = QtWidgets.QLineEdit()
         self.layout.addRow("ROI Radius: ", self.roi_radius)
 
-    def _add_energy_stats(self):
+    def add_energy_stats(self):
         self.pc_enc_label = QtWidgets.QLabel()
         self.half_label = QtWidgets.QLabel()
 
         self.layout.addRow("% Enclosed: ", self.pc_enc_label)
         self.layout.addRow("50% Enclosed Radius: ", self.half_label)
+
+    def add_raw_frame_stats(self):
+        self.min_count_label = QtWidgets.QLabel()
+        self.max_count_label = QtWidgets.QLabel()
+
+        self.layout.addRow("Min Pixel Value (raw): ", self.min_count_label)
+        self.layout.addRow("Min Pixel Value (raw): ", self.max_count_label)
 
     def ee_roi_changed(self):
         x, y = self.ee_roi.pos()
@@ -85,6 +99,11 @@ class Data_Form(QtWidgets.QWidget):
 
     def set_ee_label(self, ee: float, pc_enc: float, total_sum : float):
         self.pc_enc_label.setText(f"{np.round(pc_enc * 100, 4)}%: {int(np.round(ee))}/{int(np.round(total_sum))}")
+
+    def set_frame_stats(self, stats: dict):
+        print(f"Set frame stats: {stats}")
+        self.min_count_label.setText(str(stats["Min"]))
+        self.max_count_label.setText(str(stats["Max"]))
 
 class Stats_Title(QtWidgets.QLabel):
     def __init__(self):

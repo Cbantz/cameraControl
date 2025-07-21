@@ -12,14 +12,18 @@ class Viewfinder(pg.GraphicsLayoutWidget):
     """
     Displays a feed from a camera with a histogram
     """
-    def __init__(self, roi_manager: ROI_Manager = None, camera: CameraController = None, diff_tools: Diffractometer_Tools = None, vf_buttons : ViewfinderButtons = None, imi: Display_Imi = None):
+    def __init__(self, roi_manager: ROI_Manager = None, camera: CameraController = None, diff_tools: Diffractometer_Tools = None, vf_buttons : ViewfinderButtons = None):
         super().__init__(parent=None)
 
         # Instantiate Children
-        
-        self.viewbox = Viewbox(roi_manager=roi_manager, diff_tools=diff_tools, vf_buttons = vf_buttons, imi=imi)
+        if camera:
+            imi = camera.imi
+        else:
+            print("No Camera connected to Viewfinder")
+            imi = None
+        self.viewbox = Viewbox(roi_manager=roi_manager, diff_tools=diff_tools, vf_buttons = vf_buttons, camera=camera)
         self.hist = pg.HistogramLUTItem(imi)
-        self.hist.setHistogramRange(0, 65545) # Max pixel value in RAW16
+        self.hist.setHistogramRange(0, 65535) # Max pixel value in RAW16
 
         # Arrange in layout
         self.addItem(self.viewbox)

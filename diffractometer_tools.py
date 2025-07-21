@@ -40,7 +40,7 @@ class Diffractometer_Tools(QtCore.QObject):
         Runs whenever the camera gets a new center of mass processed.
         '''
         self.set_spot_pos(com)
-        self.check_for_centered(self.frame_dims, self.spot_pos)
+        self.centering_monitor.check_centered(com=com)
         
     
     def frame_received(self, frame):

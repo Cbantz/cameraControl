@@ -6,7 +6,7 @@ class Background_ROI(pg.RectROI):
         super().__init__(pos, size, centered=centered, sideScalers=sideScalers)
 
     def set_in_corner(self, corner: str, dims: tuple) -> None:
-        size_x = self.size.x()
+        size_x = self.size().x()
         size_y = self.size().y()
         match corner:
             case "TR":

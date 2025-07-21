@@ -8,18 +8,24 @@ from viewfinder_buttons import ViewfinderButtons
 from roi_manager import ROI_Manager
 from viewfinder_buttons import ViewfinderButtons
 from camera import CameraController
-from displayimageitem import Display_Imi
+
 
 class Viewbox(pg.ViewBox):
     '''
     Viewbox containing rois and crosshairs
     '''
-    def __init__(self, roi_manager: ROI_Manager = None, diff_tools : Diffractometer_Tools = None, vf_buttons : ViewfinderButtons = None, imi: Display_Imi = None):
+    def __init__(self, roi_manager: ROI_Manager = None, diff_tools : Diffractometer_Tools = None, vf_buttons : ViewfinderButtons = None, camera: CameraController = None):
         super().__init__(parent=None, invertY=True)
+        self.setAspectLocked()
 
         # Components
-        if imi:
-            self.imi=imi
+        if camera:
+            self.imi=camera.imi
+            self.addItem(self.imi)
+            camera.worker.first_frame.connect(self.center_rois)
+            camera.worker.com_ready.connect(self.centroid)
+        else:
+            print("No Camera connected to Viewbox")
         
         #Set up ROIs
         if roi_manager:
@@ -28,6 +34,7 @@ class Viewbox(pg.ViewBox):
             self.bg_roi = roi_manager.bg_roi
             self.addItem(self.ee_roi)
             self.addItem(self.half_roi)
+            self.addItem(self.bg_roi)
         else:
             print("No ROI Manager connected to Viewbox")
         
@@ -45,18 +52,15 @@ class Viewbox(pg.ViewBox):
         else:
             print("No Diffractometer Tools connected to Viewbox")
 
-        self.addItem(self.imi)
+        
+
+        
         
 
     def centroid(self, com = None):
         '''
         Moves the EE ROI to the scipy center of mass of the current displayed image. Can take provided center of mass. If none provided, will calculate it here.
         '''
-
-        if not com:
-            self.ee_roi.set_center_pos(self.imi.com()) # Set center of ee_roi to com of image item
-
-        
         if self.centroid_button.isChecked():
             self.ee_roi.set_center_pos(com)
 
@@ -66,15 +70,12 @@ class Viewbox(pg.ViewBox):
         '''
 
         print("Arranging ROIs")
-        x,y = np.shape(self.imi.dims) 
-
-        # ROI parameters
-        self.display_crosshairs(x, y, 20)
+        (x,y) = self.imi.dims()
 
         roi_bounds = pg.QtCore.QRectF(pg.QtCore.QPoint(0, 0), pg.QtCore.QPoint(x, y)) #ROI bounded to the image size.
         
         # ROI centered in image
-        self.ee_roi.set_center_pos(x/2, y/2)
+        self.ee_roi.set_center_pos((x/2, y/2))
         self.bg_roi.set_in_corner("BR", self.imi.dims())
 
         # Set ROI Bounds
@@ -84,18 +85,6 @@ class Viewbox(pg.ViewBox):
         #Show ROIs
         self.ee_roi.setVisible(True)
         self.bg_roi.setVisible(True)
-
-    def display_crosshairs(self, x, y, width):
-        if(not self.crosshairs):
-            self.crosshairs = Crosshairs((x, y), width)
-            self.addItem(self.crosshairs.h_crosshair)
-            self.addItem(self.crosshairs.v_crosshair)
-        else:
-            self.removeItem(self.crosshairs.h_crosshair)
-            self.removeItem(self.crosshairs.v_crosshair)
-            self.crosshairs.set_size((x, y), width)
-            self.addItem(self.crosshairs.h_crosshair)
-            self.addItem(self.crosshairs.v_crosshair)
 
 
 
