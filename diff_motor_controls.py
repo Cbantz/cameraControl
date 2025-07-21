@@ -56,6 +56,7 @@ class movement_control_panel(QtWidgets.QGroupBox):
     def __init__(self):
         super().__init__(parent=None)
 
+        # Label for camera section of controls.
         section_header_font = QtGui.QFont()
         section_header_font.setPointSize(14)
         camera_section_label = QtWidgets.QLabel("Camera Motor Controls")
@@ -63,7 +64,7 @@ class movement_control_panel(QtWidgets.QGroupBox):
         camera_section_label.setFont(section_header_font)
    
 
-        # Custom relative move widget
+        # Custom relative move widget.
 
         self.cam_custom_rel_widget = QtWidgets.QWidget()
         self.cam_custom_rel_layout = QtWidgets.QHBoxLayout()
@@ -78,7 +79,7 @@ class movement_control_panel(QtWidgets.QGroupBox):
 
 
 
-        # Create Camera Button Panel
+        # Create Camera Button Panel.
         camera_move_buttons = QtWidgets.QWidget()
         camera_move_buttons_layout = QtWidgets.QHBoxLayout()
         camera_move_buttons.setLayout(camera_move_buttons_layout)
@@ -133,10 +134,10 @@ class movement_control_panel(QtWidgets.QGroupBox):
         g_minus_p5 = motor_rel_move_button(-0.5)
         g_minus_5 = motor_rel_move_button(-5)
         negative_grating_rel_buttons = [g_minus_5, g_minus_p5, g_minus_p05]
-        g_neg_fast = motor_move_button("\u21C7", -1)
-        g_neg_slow = motor_move_button("\u2190", -.5)
-        g_pos_slow = motor_move_button("\u2192", .5)
-        g_pos_fast = motor_move_button("\u21C9", 1)
+        g_neg_fast = motor_move_button("<<", -1)
+        g_neg_slow = motor_move_button("<", -.5)
+        g_pos_slow = motor_move_button(">", .5)
+        g_pos_fast = motor_move_button(">>", 1)
         self.grating_indef_move_buttons = [g_neg_fast, g_neg_slow, g_pos_slow, g_pos_fast]
         self.grating_rel_buttons = positive_grating_rel_buttons + negative_grating_rel_buttons
         for button in negative_grating_rel_buttons + self.grating_indef_move_buttons + positive_grating_rel_buttons:

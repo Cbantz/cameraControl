@@ -5,9 +5,9 @@ from roi_manager import ROI_Manager
 from diffractometer_tools import Diffractometer_Tools
 from viewpanel import ViewPanel
 class Diffractometer_GUI(QtWidgets.QWidget):
-    '''
-    Used as central widget for diffractometer control. Contains a View Panel and Diffractometer Controls
-    '''
+    """
+    Central widget for diffractometer control GUI.
+    """
     def __init__(self, camera: CameraController = None, roi_manager: ROI_Manager = None):
         super().__init__(parent=None)
         self.parent_layout = QtWidgets.QGridLayout()

@@ -5,11 +5,15 @@ from camera import CameraController
 from diffractometer_gui import Diffractometer_GUI
 
 class GUI_OAT(QtWidgets.QApplication):
+    '''
+    Main application for the GUI OAT Viewer.
+    '''
     def __init__(self):
         super().__init__(parent = None)
         
         self.roi_manager = ROI_Manager()
         self.camera = None
+        # Try to instantiate a CameraController.
         try:
             self.camera = CameraController(roi_manager=self.roi_manager)
         except Exception as e:

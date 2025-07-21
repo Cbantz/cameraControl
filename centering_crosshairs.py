@@ -4,6 +4,9 @@ from centering_diff_util import Centering_Monitor
 from camera import CameraController
 
 class Crosshairs(QtCore.QObject):
+    """
+    Two crosshairs which will light up to signify a centered spot.
+    """
     def __init__(self, centering: Centering_Monitor = None, camera : CameraController = None, parent = None):
         super().__init__(parent)
 
@@ -15,10 +18,12 @@ class Crosshairs(QtCore.QObject):
         else:
             print("No Camera Connected to Crosshairs, crosshairs will not function")
             return
+        
         if(centering):
             self.tolerance = self.centering.centering_tolerance
-            self.h_crosshair = pg.ROI((0,(height/2)-self.tolerance), (width, 2*self.tolerance), movable=False)
+            self.h_crosshair = pg.ROI((0,(height/2)-self.tolerance), (width, 2*self.tolerance), movable=False) # Centered on axis with width = tolerance
             self.v_crosshair = pg.ROI(((width/2)-self.tolerance,0), (2*self.tolerance, height), movable = False) 
+            # Signal Connections
             self.centering.h_enter_center.connect(self.show_centered_h)
             self.centering.v_enter_center.connect(self.show_centered_v)
             self.centering.h_exit_center.connect(self.reset_pen_h)

@@ -6,6 +6,11 @@ from roi_manager import ROI_Manager
 from displayimageitem import Display_Imi
 
 class EE_Processor(QtCore.QObject):
+    """
+    Manager of the encircled energy process.
+
+    Instantiates EE Worker and manages requests to keep EE stats up to date.
+    """
     calc_req = QtCore.Signal()
     is_requested: bool = False
     def __init__(self, camera : CameraController = None, roi_manager: ROI_Manager = None):
@@ -21,6 +26,8 @@ class EE_Processor(QtCore.QObject):
             ee_roi.sigRegionChanged.connect(self.request)
         else:
             print("No ROI Manager connected to EE Processor")
+
+        # Instantiate Worker
         self.worker = Worker(roi_manager=roi_manager, imi=imi, processor=self)
         self.worker_thread = QtCore.QThread()
         self.worker.moveToThread(self.worker_thread)
@@ -28,6 +35,9 @@ class EE_Processor(QtCore.QObject):
         self.worker_thread.start()
 
     def request(self):
+        '''
+        Call whenever a new request is needed. Queues the most recent request for processing.
+        '''
         if  self.worker.is_busy:
             self.is_requested = True
         else:
@@ -35,6 +45,9 @@ class EE_Processor(QtCore.QObject):
             
 
     def check_up_to_date(self):
+        '''
+        Runs after each result to determine if the most recent request is fulfilled.
+        '''
         if self.is_requested:
             self.calc_req.emit()
             self.is_requested = False
@@ -45,6 +58,11 @@ class EE_Processor(QtCore.QObject):
 
 
 class Worker(QtCore.QObject):
+    """
+    Worker class for the EE Processor.
+
+    Calculates encircled energy in counts and as a percentage of the whole frame, the radius at which 50% of the energy in the ee_roi is encircled, adjusts half_roi size accordingly.
+    """
     is_busy: bool = False # Can take a new frame
     ee_ready = QtCore.Signal(float, float, float) # Results of calculations
     half_ready = QtCore.Signal(int) # Results

@@ -8,7 +8,7 @@ from diff_motor_controls import motor_control_widget
 
 class Diffractometer_Tools(QtCore.QObject):
     '''
-    Collection of utilities to make use of the diffractometer motors and, a camera.
+    Collection of utilities to make use of the diffractometer.
     '''
     def __init__(self, camera: CameraController = None):
         super().__init__(parent=None)
@@ -45,13 +45,6 @@ class Diffractometer_Tools(QtCore.QObject):
         self.set_spot_pos(com)
         self.centering_monitor.check_centered(com=com)
         
-    
-    def frame_received(self, frame):
-        dims = np.shape(frame)
-        if dims == self.frame_dims:
-            return
-        else:
-            self.frame_dims = dims
 
     def set_spot_pos(self, pos):
         '''

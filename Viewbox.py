@@ -8,7 +8,11 @@ from camera import CameraController
 
 class Viewbox(pg.ViewBox):
     '''
-    Viewbox containing rois and crosshairs
+    Viewbox containing rois and crosshairs.
+
+    Displays rois on top of an image item. Contains logic for moving ROIs such as:
+        - Arranging ROIs neatly in frame.
+        - Centroid function for EE ROI.
     '''
     def __init__(self, roi_manager: ROI_Manager = None, diff_tools : Diffractometer_Tools = None, vf_buttons : ViewfinderButtons = None, camera: CameraController = None):
         super().__init__(parent=None, invertY=True)
@@ -62,7 +66,7 @@ class Viewbox(pg.ViewBox):
 
     def center_rois(self):
         '''
-        Will organize and show ROIs according to content being shown. Useful when changing main image focus or type.
+        Will organize and show ROIs according to content being shown.
         '''
 
         print("Arranging ROIs")
@@ -72,7 +76,7 @@ class Viewbox(pg.ViewBox):
         
         # ROI centered in image
         self.ee_roi.set_center_pos((x/2, y/2))
-        self.bg_roi.set_in_corner("BR", self.imi.dims())
+        self.bg_roi.set_in_corner(dims=self.imi.dims(), corner="BR")
 
         # Set ROI Bounds
         self.ee_roi.maxBounds = roi_bounds

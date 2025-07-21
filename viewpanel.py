@@ -9,7 +9,10 @@ from viewfinder import Viewfinder
 from ee_processor import EE_Processor
 class ViewPanel(QtWidgets.QWidget):
     '''
-    Widget which shows viewfinder, rois, and stats from viewfinder
+    Widget for displaying a live feed from a camera, as well as related stats. Includes:
+        - Buttons to control roi behavior.
+        - Live feed of camera.
+        - Panel of stats about current frame.
     '''
     def __init__(self, roi_manager: ROI_Manager = None, camera: CameraController = None, diff_tools: Diffractometer_Tools = None):
         super().__init__(parent=None)
@@ -26,7 +29,7 @@ class ViewPanel(QtWidgets.QWidget):
 
         #Connect Signals
 
-            #From Button
+        #   From Button
         self.vf_buttons.reset_roi_button.clicked.connect(self.viewfinder.viewbox.center_rois)
 
 

@@ -39,7 +39,7 @@ class Exposure_Slider(QtWidgets.QSlider):
         self.setTickInterval(50)
         self.setTickPosition(QtWidgets.QSlider.TickPosition.TicksBothSides)
         self.setMinimumWidth(200)
-        self.setTracking(False)
+        self.setTracking(True)
         
 
 class Exposure_Text(QtWidgets.QLineEdit):

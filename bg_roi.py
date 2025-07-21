@@ -2,10 +2,26 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
 
 class Background_ROI(pg.RectROI):
-    def __init__(self, pos, size = (100, 100), centered=False, sideScalers=False):
-        super().__init__(pos, size, centered=centered, sideScalers=sideScalers)
+    '''
+    Region used to define the background of the camera image.
+    '''
+    def __init__(self, pos : tuple, size = (100, 100)):
+        """
+        
 
-    def set_in_corner(self, corner: str, dims: tuple) -> None:
+        Args:
+            pos (tuple): Position to instantiate region at. 
+            size (tuple, optional): Size of the region. Defaults to (100, 100).
+        """
+        super().__init__(pos, size)
+
+    def set_in_corner(self, dims: tuple, corner: str = "BR") -> None:
+        """Moves region to a corner.
+
+        Args:
+            dims (tuple): dimensions of the frame to sit in.
+            corner (str, optional): Which corner to set in (TR, TL, BR, BL). Defaults to "BR".
+        """     
         size_x = self.size().x()
         size_y = self.size().y()
         match corner:

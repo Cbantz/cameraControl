@@ -2,6 +2,14 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtWidgets
 
 class ViewfinderButtons(QtWidgets.QWidget):
+    """
+    Collection of buttons to be used with a viewfinder class.
+
+    Includes:
+        - Centroid
+        - Reset ROIs
+        - Show/Hide Crosshair
+    """
     def __init__(self):
         super().__init__(parent=None)
         self.hlayout = QtWidgets.QHBoxLayout()

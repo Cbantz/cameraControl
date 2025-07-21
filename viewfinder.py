@@ -7,7 +7,7 @@ from viewfinder_buttons import ViewfinderButtons
 
 class Viewfinder(pg.GraphicsLayoutWidget):
     """
-    Displays a feed from a camera with a histogram
+    Displays a feed from a camera with a histogram.
     """
     def __init__(self, roi_manager: ROI_Manager = None, camera: CameraController = None, diff_tools: Diffractometer_Tools = None, vf_buttons : ViewfinderButtons = None):
         super().__init__(parent=None)

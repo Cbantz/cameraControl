@@ -4,7 +4,9 @@ from camera import CameraController
 
 class Centering_Monitor(QtCore.QObject):
     '''
-    Checks state of centered and manages crosshairs
+    Monitors whether a spot of light is centered or not.
+
+    Checks each processed frame from camera and determines if the spot enters or exits the bounds of centering tolerance.
     '''
     h_enter_center = QtCore.Signal()
     h_exit_center = QtCore.Signal()
@@ -24,7 +26,9 @@ class Centering_Monitor(QtCore.QObject):
 
 
     def check_centered(self, com: tuple):
-        
+        '''
+        Checks position of spot in relation to center of both axes. Emits appropriate signal if spot has entered or exited a center.
+        '''
         width, height = self.roi[2], self.roi[3]
         center_x, center_y = width/2, height/2
         com_x, com_y = com[0], com[1]

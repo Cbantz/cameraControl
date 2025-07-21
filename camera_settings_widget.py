@@ -5,6 +5,9 @@ from Gain_Setting_Widget import Gain_Setting_Widget
 
 
 class Camera_Settings_Widget(QtWidgets.QWidget):
+    """
+    Widget for adjusting camera settings in a GUI.
+    """
     def __init__(self):
         super().__init__(parent = None)
         self.grid_layout = QtWidgets.QGridLayout()
