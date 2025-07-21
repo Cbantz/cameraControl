@@ -1,5 +1,5 @@
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
+from pyqtgraph.Qt import QtWidgets
 
 class ViewfinderButtons(QtWidgets.QWidget):
     def __init__(self):

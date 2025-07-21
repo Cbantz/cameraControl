@@ -1,12 +1,9 @@
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
 from Viewbox import Viewbox
 from roi_manager import ROI_Manager
 from camera import CameraController
 from diffractometer_tools import Diffractometer_Tools
-from data_display_widget import Data_Display_Widget
 from viewfinder_buttons import ViewfinderButtons
-from displayimageitem import Display_Imi
 
 class Viewfinder(pg.GraphicsLayoutWidget):
     """

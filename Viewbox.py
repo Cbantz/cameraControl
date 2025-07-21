@@ -1,8 +1,4 @@
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
-import numpy as np
-from centering_crosshairs import Crosshairs
-from displayimageitem import Display_Imi
 from diffractometer_tools import Diffractometer_Tools
 from viewfinder_buttons import ViewfinderButtons
 from roi_manager import ROI_Manager

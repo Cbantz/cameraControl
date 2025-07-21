@@ -1,6 +1,5 @@
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
-import numpy as np
+from pyqtgraph.Qt import QtCore
 from centering_diff_util import Centering_Monitor
 from camera import CameraController
 

@@ -4,6 +4,7 @@ from camera import CameraController
 from motor_controller import Motor_Controller
 from centering_diff_util import Centering_Monitor
 from centering_crosshairs import Crosshairs
+from diff_motor_controls import motor_control_widget
 
 class Diffractometer_Tools(QtCore.QObject):
     '''
@@ -25,6 +26,8 @@ class Diffractometer_Tools(QtCore.QObject):
             self.motor = Motor_Controller()
         except Exception as e:
             print(e)
+
+        self.motor_control_widget = motor_control_widget(motor=self.motor)
 
         # Set up Camera
         if camera:

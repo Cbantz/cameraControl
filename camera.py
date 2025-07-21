@@ -1,9 +1,8 @@
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtWidgets, QtCore, QtGui
+from pyqtgraph.Qt import QtCore
 import zwoasi as asi
 import numpy as np
 from scipy.ndimage import center_of_mass
-import time
 from roi_manager import ROI_Manager
 from displayimageitem import Display_Imi
 from bg_roi import Background_ROI
@@ -123,7 +122,7 @@ class Camera_Worker(QtCore.QObject):
         if self.controller.is_active:
             self.emit_results(results[0], results[1], results[2])
             self.first_frame.emit()
-            self.thread().sleep(5)
+            self.thread().sleep(2)
             while self.controller.is_active:
                 self.run_live()
 

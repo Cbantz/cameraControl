@@ -1,7 +1,6 @@
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
+from pyqtgraph.Qt import QtWidgets
 from camera import CameraController
-from diffractometer_controller_gui import dt_window
 from roi_manager import ROI_Manager
 from diffractometer_tools import Diffractometer_Tools
 from viewpanel import ViewPanel
@@ -18,11 +17,10 @@ class Diffractometer_GUI(QtWidgets.QWidget):
         #Instantiate Children
         self.diff_tools = Diffractometer_Tools(camera=camera)
         self.viewpanel = ViewPanel(roi_manager=roi_manager, camera=camera, diff_tools=self.diff_tools)
-        self.diff_control_widget = dt_window(diff_tools=self.diff_tools)
 
         # Arrange Layout
         self.parent_layout.addWidget(self.viewpanel)
-        self.parent_layout.addWidget(self.diff_control_widget)
+        self.parent_layout.addWidget(self.diff_tools.motor_control_widget)
 
 
 if __name__ == "__main__":

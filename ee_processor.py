@@ -1,5 +1,4 @@
-import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
+from pyqtgraph.Qt import QtCore
 import numpy as np
 from photutils.aperture import CircularAperture
 from camera import CameraController

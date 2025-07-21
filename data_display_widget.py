@@ -1,5 +1,5 @@
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
+from pyqtgraph.Qt import QtGui, QtWidgets
 import numpy as np
 from roi_manager import ROI_Manager
 from ee_processor import EE_Processor
@@ -83,7 +83,7 @@ class Data_Form(QtWidgets.QWidget):
         self.max_count_label = QtWidgets.QLabel()
 
         self.layout.addRow("Min Pixel Value (raw): ", self.min_count_label)
-        self.layout.addRow("Min Pixel Value (raw): ", self.max_count_label)
+        self.layout.addRow("Max Pixel Value (raw): ", self.max_count_label)
 
     def ee_roi_changed(self):
         x, y = self.ee_roi.pos()
@@ -101,7 +101,6 @@ class Data_Form(QtWidgets.QWidget):
         self.pc_enc_label.setText(f"{np.round(pc_enc * 100, 4)}%: {int(np.round(ee))}/{int(np.round(total_sum))}")
 
     def set_frame_stats(self, stats: dict):
-        print(f"Set frame stats: {stats}")
         self.min_count_label.setText(str(stats["Min"]))
         self.max_count_label.setText(str(stats["Max"]))
 

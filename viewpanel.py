@@ -1,6 +1,5 @@
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtWidgets, QtCore, QtGui
-from Viewbox import Viewbox
+from pyqtgraph.Qt import QtWidgets
 from roi_manager import ROI_Manager
 from camera import CameraController
 from diffractometer_tools import Diffractometer_Tools
@@ -8,8 +7,6 @@ from data_display_widget import Data_Display_Widget
 from viewfinder_buttons import ViewfinderButtons
 from viewfinder import Viewfinder
 from ee_processor import EE_Processor
-from displayimageitem import Display_Imi
-
 class ViewPanel(QtWidgets.QWidget):
     '''
     Widget which shows viewfinder, rois, and stats from viewfinder

@@ -1,19 +1,17 @@
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 from motor_controller import Motor_Controller
-from diffractometer_tools import Diffractometer_Tools
 
 
-class dt_window(QtWidgets.QWidget):
+class motor_control_widget(QtWidgets.QWidget):
 
-    def __init__(self, diff_tools : Diffractometer_Tools = None):
+    def __init__(self, motor: Motor_Controller):
         super().__init__(parent=None)
         layout = QtWidgets.QGridLayout()
         self.setLayout(layout)
         
-        if(diff_tools and diff_tools.motor):
-            self.diff_tools : Diffractometer_Tools = diff_tools
-            self.self.motor = diff_tools.motor
+        if(motor):
+            self.motor = motor
         self.movement_panel = movement_control_panel()
         
         

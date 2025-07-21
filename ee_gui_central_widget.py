@@ -7,7 +7,7 @@ from ee_processor import EE_Worker
 from static_image_handler import Static_Image_Handler
 from camera import CameraController
 from Viewbox import EE_Gui_Main_View
-from diffractometer_controller_gui import dt_window
+from diff_motor_controls import dt_window
 
 class EE_GUI_Central_Widget(QtWidgets.QWidget):
 
