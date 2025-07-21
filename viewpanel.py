@@ -34,6 +34,7 @@ class ViewPanel(QtWidgets.QWidget):
         self.grid_layout.addWidget(self.vf_buttons)
         self.grid_layout.addWidget(self.viewfinder)
         self.grid_layout.addWidget(self.data_panel)
+        self.grid_layout.addWidget(camera.settings.widget)
 
         self.viewfinder.setMinimumHeight(300)
         

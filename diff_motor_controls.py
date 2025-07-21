@@ -229,7 +229,7 @@ if __name__ == '__main__':
     
     test_app = pg.mkQApp()
     
-    window = dt_window()
+    window = motor_control_widget()
     window.show()
 
     test_app.exec()

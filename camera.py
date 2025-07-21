@@ -6,6 +6,7 @@ from scipy.ndimage import center_of_mass
 from roi_manager import ROI_Manager
 from displayimageitem import Display_Imi
 from bg_roi import Background_ROI
+from camera_settings_widget import Camera_Settings_Widget
 
 class CameraController(QtCore.QObject):
     start_req = QtCore.Signal() # Use to start camera
@@ -22,7 +23,7 @@ class CameraController(QtCore.QObject):
             return
         if roi_manager:
             self.bg_roi = roi_manager.bg_roi
-            self.bg_roi.sigRegionChanged.connect(self.bg_array_moved)
+            self.bg_roi.sigRegionChangeFinished.connect(self.bg_array_moved)
         self.settings = Camera_Settings(self.camera)
         
 
@@ -78,6 +79,12 @@ class Camera_Settings(QtCore.QObject):
         self.camera.set_control_value(asi.ASI_EXPOSURE, self.exposure)
         self.camera.set_control_value(asi.ASI_GAIN, self.gain)
         self.timeout = self.get_timeout()
+        self.widget = Camera_Settings_Widget()
+        self.set_up_widget()
+
+    def set_up_widget(self):
+        self.widget.exposure_widget.slider.valueChanged.connect(self.set_exposure)
+        self.widget.gain_widget.slider.valueChanged.connect(self.set_gain)
 
     def get_timeout(self):
         '''
@@ -91,13 +98,13 @@ class Camera_Settings(QtCore.QObject):
         Sets camera exposure (microseconds)
         """
         self.exposure = exposure
-        self.settings_changed = True
+        self.camera.set_control_value(asi.ASI_EXPOSURE, self.exposure)
         print(f"Exposure set to {self.exposure}")
 
     def set_gain(self, gain: int):
         
         self.gain = gain
-        self.settings_changed = True
+        self.camera.set_control_value(asi.ASI_GAIN, self.gain)
         print(f"Gain set to {self.gain}")
 
 
@@ -138,6 +145,8 @@ class Camera_Worker(QtCore.QObject):
             self.end_live()
 
     def capture_and_process_frame(self, bg_sub: bool = True) -> tuple[tuple, np.ndarray, dict]:
+
+
         frame = self.camera.capture_video_frame(timeout=self.settings.get_timeout())
         raw_frame_stats = {"Min": np.min(frame), "Max": np.max(frame)}
         if bg_sub:

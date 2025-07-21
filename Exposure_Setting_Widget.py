@@ -2,7 +2,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtWidgets, QtGui
 
 class Exposure_Setting_Widget(QtWidgets.QWidget):
-    def __init__(self, range):
+    def __init__(self, range: tuple):
         super().__init__(parent = None)
         self.grid_layout = QtWidgets.QGridLayout()
         self.setLayout(self.grid_layout)
