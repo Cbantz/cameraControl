@@ -22,7 +22,7 @@ class ViewPanel(QtWidgets.QWidget):
         # Instantiate Children
 
 
-        self.vf_buttons = ViewfinderButtons()
+        self.vf_buttons = ViewfinderButtons(diff_tools = diff_tools)
         self.ee_processor = EE_Processor(camera=camera, roi_manager=roi_manager)
         self.viewfinder = Viewfinder(roi_manager=roi_manager, camera=camera, vf_buttons=self.vf_buttons, diff_tools=diff_tools)
         self.data_panel = Data_Display_Widget(roi_manager=roi_manager, ee_processor=self.ee_processor, camera=camera)

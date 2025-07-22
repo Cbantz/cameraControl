@@ -13,6 +13,10 @@ class EE_ROI(pg.CircleROI):
         self.addScaleHandle((1, 1), (0.5, 0.5), lockAspect=True)
         self.half_roi = Half_ROI(pos, size, radius, ee_roi=self)
         self.sigRegionChanged.connect(self.half_roi.center_rel_ee)
+        self.center_roi = Center_Spot((0,0))
+        self.setVisible(True)
+        self.half_roi.setVisible(True)
+        self.center_roi.setVisible(True)
 
     def set_center_pos(self, pos:tuple):
         x,y = pos[0],pos[1]
@@ -31,6 +35,7 @@ class Half_ROI(pg.CircleROI):
         super().__init__(pos, size, radius=radius, movable=movable)
         self.removeHandle(0)
         self.ee_roi = ee_roi
+        self.setPen(pg.mkPen('y'))
     
     def radius(self) -> float:
         return self.size().x()/2
@@ -43,3 +48,28 @@ class Half_ROI(pg.CircleROI):
 
     def resize(self, radius: int):
         self.setSize(radius * 2, center=(0.5,0.5))
+
+class Center_Spot(pg.CircleROI):
+    def __init__(self, pos, radius=2, movable = False):
+        super().__init__(pos, radius, movable)
+        self.setPen(pg.mkPen('r', width=2))
+        self.removeHandle(0)
+        self.setVisible(False)
+    
+    def set_center_pos(self, pos:tuple):
+        x,y = pos[0],pos[1]
+        radius = self.size().x()/2
+        centered_pos = (x-radius, y-radius)
+        self.setPos(centered_pos)
+
+        
+if __name__ == "__main__":
+    app = pg.mkQApp()
+    widget = pg.GraphicsLayoutWidget()
+    viewbox = pg.ViewBox()
+    viewbox.addItem(Center_Spot((0,0)))
+    viewbox.setAspectLocked(True)
+    widget.addItem(viewbox)
+    widget.show()
+    app.exec()
+    

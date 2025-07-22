@@ -5,19 +5,23 @@ from motor_controller import Motor_Controller
 from centering_diff_util import Centering_Monitor
 from centering_crosshairs import Crosshairs
 from diff_motor_controls import motor_control_widget
+from roi_manager import ROI_Manager
 
 class Diffractometer_Tools(QtCore.QObject):
     '''
     Collection of utilities to make use of the diffractometer.
     '''
-    def __init__(self, camera: CameraController = None):
+    def __init__(self, camera: CameraController = None, roi_manager : ROI_Manager = None):
         super().__init__(parent=None)
         self.centered_tolerance = 20
         self.frame_dims = None
 
 
         # Instantiate Children
-        self.centering_monitor = Centering_Monitor(camera)
+        self.worker_thread = QtCore.QThread()
+        self.centering_monitor = Centering_Monitor(camera=camera, roi_manager=roi_manager)
+        self.centering_monitor.moveToThread(self.worker_thread)
+        self.worker_thread.start()
         self.crosshairs = Crosshairs(centering=self.centering_monitor, camera=camera)
 
         # Set up Motor
@@ -33,7 +37,6 @@ class Diffractometer_Tools(QtCore.QObject):
         if camera:
             self.camera = camera
             self.camera.worker.com_ready.connect(self.com_received)
-            self.camera.worker.frame_ready.connect(self.frame_received)
         else:
             print("No camera connected to Diffractometer tools")
         
@@ -43,7 +46,6 @@ class Diffractometer_Tools(QtCore.QObject):
         Runs whenever the camera gets a new center of mass processed.
         '''
         self.set_spot_pos(com)
-        self.centering_monitor.check_centered(com=com)
         
 
     def set_spot_pos(self, pos):

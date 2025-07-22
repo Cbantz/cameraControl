@@ -18,7 +18,7 @@ class Viewfinder(pg.GraphicsLayoutWidget):
         else:
             print("No Camera connected to Viewfinder")
             imi = None
-        self.viewbox = Viewbox(roi_manager=roi_manager, diff_tools=diff_tools, vf_buttons = vf_buttons, camera=camera)
+        self.viewbox = Viewbox(roi_manager=roi_manager, diff_tools=diff_tools, camera=camera)
         self.hist = pg.HistogramLUTItem(imi)
         self.hist.setHistogramRange(0, 65535) # Max pixel value in RAW16
 

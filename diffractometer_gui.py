@@ -15,7 +15,7 @@ class Diffractometer_GUI(QtWidgets.QWidget):
 
 
         #Instantiate Children
-        self.diff_tools = Diffractometer_Tools(camera=camera)
+        self.diff_tools = Diffractometer_Tools(camera=camera, roi_manager=roi_manager)
         self.viewpanel = ViewPanel(roi_manager=roi_manager, camera=camera, diff_tools=self.diff_tools)
 
         # Arrange Layout

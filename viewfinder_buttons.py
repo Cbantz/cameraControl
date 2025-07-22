@@ -1,5 +1,6 @@
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtWidgets
+from diffractometer_tools import Diffractometer_Tools
 
 class ViewfinderButtons(QtWidgets.QWidget):
     """
@@ -10,20 +11,26 @@ class ViewfinderButtons(QtWidgets.QWidget):
         - Reset ROIs
         - Show/Hide Crosshair
     """
-    def __init__(self):
+    def __init__(self, diff_tools : Diffractometer_Tools = None):
         super().__init__(parent=None)
         self.hlayout = QtWidgets.QHBoxLayout()
         self.setLayout(self.hlayout)
 
-
-        self.centroid_button = QtWidgets.QPushButton("Centroid")
-        self.centroid_button.setCheckable(True)
         self.reset_roi_button = QtWidgets.QPushButton("Reset ROIs")
         self.show_hide_crosshairs_button = QtWidgets.QPushButton("Show/hide Crosshair")
 
-        self.hlayout.addWidget(self.centroid_button)
+
+        if diff_tools:
+            self.centroid_button = diff_tools.centering_monitor.centroid_button
+            self.hlayout.addWidget(self.centroid_button)
+            self.hlayout.addWidget(diff_tools.centering_monitor.inner_com_check)
+        else:
+            print("No Diffractometer Tools connected to Viewfinder Buttons")
         self.hlayout.addWidget(self.reset_roi_button)
         self.hlayout.addWidget(self.show_hide_crosshairs_button)
+
+
+            
 
 
 

@@ -4,6 +4,7 @@ from viewfinder_buttons import ViewfinderButtons
 from roi_manager import ROI_Manager
 from viewfinder_buttons import ViewfinderButtons
 from camera import CameraController
+from scipy.ndimage import center_of_mass
 
 
 class Viewbox(pg.ViewBox):
@@ -14,7 +15,7 @@ class Viewbox(pg.ViewBox):
         - Arranging ROIs neatly in frame.
         - Centroid function for EE ROI.
     '''
-    def __init__(self, roi_manager: ROI_Manager = None, diff_tools : Diffractometer_Tools = None, vf_buttons : ViewfinderButtons = None, camera: CameraController = None):
+    def __init__(self, roi_manager: ROI_Manager = None, diff_tools : Diffractometer_Tools = None, camera: CameraController = None):
         super().__init__(parent=None, invertY=True)
         self.setAspectLocked()
 
@@ -23,7 +24,6 @@ class Viewbox(pg.ViewBox):
             self.imi=camera.imi
             self.addItem(self.imi)
             camera.worker.first_frame.connect(self.center_rois)
-            camera.worker.com_ready.connect(self.centroid)
         else:
             print("No Camera connected to Viewbox")
         
@@ -31,22 +31,19 @@ class Viewbox(pg.ViewBox):
         if roi_manager:
             self.ee_roi = roi_manager.ee_roi
             self.half_roi = self.ee_roi.half_roi
+            self.center_roi = self.ee_roi.center_roi
             self.bg_roi = roi_manager.bg_roi
             self.addItem(self.ee_roi)
             self.addItem(self.half_roi)
+            self.addItem(self.center_roi)
             self.addItem(self.bg_roi)
         else:
             print("No ROI Manager connected to Viewbox")
         
-        # Set up Centroid Button
-        if vf_buttons:
-            self.centroid_button = vf_buttons.centroid_button
-
-        else:
-            print("No Viewfinder Buttons connected to Viewbox")
 
         # Set up Crosshairs
         if diff_tools:
+            self.diff_tools = diff_tools
             self.addItem(diff_tools.crosshairs.h_crosshair)
             self.addItem(diff_tools.crosshairs.v_crosshair)
         else:
@@ -57,12 +54,9 @@ class Viewbox(pg.ViewBox):
         
         
 
-    def centroid(self, com = None):
-        '''
-        Moves the EE ROI to the scipy center of mass of the current displayed image. Can take provided center of mass. If none provided, will calculate it here.
-        '''
-        if self.centroid_button.isChecked():
-            self.ee_roi.set_center_pos(com)
+
+
+                
 
     def center_rois(self):
         '''
@@ -85,6 +79,7 @@ class Viewbox(pg.ViewBox):
         #Show ROIs
         self.ee_roi.setVisible(True)
         self.bg_roi.setVisible(True)
+
 
 
 
