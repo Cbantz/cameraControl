@@ -34,11 +34,10 @@ class CameraController(QtCore.QObject):
         self.worker_thread.start()
         self.worker.first_frame.connect(self.bg_array_moved)
         print("Camera Initialized")
-        self.start_live_view()
 
         # Set up display
         self.imi = Display_Imi()
-        self.worker.frame_ready.connect(self.imi.setNewImage)
+        self.worker.frame_ready.connect(self.imi.setImage)
 
     def start_live_view(self):
         self.set_active()
@@ -130,8 +129,6 @@ class Camera_Worker(QtCore.QObject):
         if self.controller.is_active:
             self.emit_results(results[0], results[1], results[2])
             self.first_frame.emit()
-            self.thread().sleep(5)
-            print("Camera will start running now")
             while self.controller.is_active:
                 self.run_live()
 
@@ -147,8 +144,6 @@ class Camera_Worker(QtCore.QObject):
             self.end_live()
 
     def capture_and_process_frame(self, bg_sub: bool = True) -> tuple[tuple, np.ndarray, dict]:
-
-        print("Capture")
 
         frame = self.camera.capture_video_frame(timeout=self.settings.get_timeout())
         raw_frame_stats = {"Min": np.min(frame), "Max": np.max(frame)}

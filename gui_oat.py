@@ -28,6 +28,7 @@ class GUI_OAT(QtWidgets.QApplication):
         self.main_win = MainWindow()
         self.main_win.show()
         self.main_win.setCentralWidget(self.diff_gui)
+        self.camera.start_live_view()
 
         self.trace_button = QtWidgets.QPushButton("Trace")
         self.trace_button.clicked.connect(self.take_memory_snapshot)

@@ -37,7 +37,7 @@ class Centering_Monitor(QtCore.QObject):
             self.centroid_button = QtWidgets.QPushButton("Centroid")
             self.centroid_button.setCheckable(True)
 
-            self.inner_com_check = QtWidgets.QCheckBox("Use Whole Frame for Centering")
+            self.inner_com_check = QtWidgets.QCheckBox("Center Inside ROI Only")
             self.inner_com_check.checkStateChanged.connect(self.use_inner_changed)
 
             self.camera.worker.com_ready.connect(self.com_received)
