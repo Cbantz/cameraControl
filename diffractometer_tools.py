@@ -6,6 +6,7 @@ from centering_diff_util import Centering_Monitor
 from centering_crosshairs import Crosshairs
 from diff_motor_controls import motor_control_widget
 from roi_manager import ROI_Manager
+from camera_capture import Capture_Manager
 
 class Diffractometer_Tools(QtCore.QObject):
     '''
@@ -37,6 +38,7 @@ class Diffractometer_Tools(QtCore.QObject):
         if camera:
             self.camera = camera
             self.camera.worker.com_ready.connect(self.com_received)
+            self.capture_manager = Capture_Manager(camera=camera)
         else:
             print("No camera connected to Diffractometer tools")
         

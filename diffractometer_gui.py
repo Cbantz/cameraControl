@@ -19,8 +19,9 @@ class Diffractometer_GUI(QtWidgets.QWidget):
         self.viewpanel = ViewPanel(roi_manager=roi_manager, camera=camera, diff_tools=self.diff_tools)
 
         # Arrange Layout
-        self.parent_layout.addWidget(self.viewpanel)
-        self.parent_layout.addWidget(self.diff_tools.motor_control_widget)
+        self.parent_layout.addWidget(self.viewpanel, 0, 0, 2, 1)
+        self.parent_layout.addWidget(self.diff_tools.motor_control_widget, 1, 1, 1, 1)
+        self.parent_layout.addWidget(self.diff_tools.capture_manager.widget, 0, 1, 1, 1)
 
 
 if __name__ == "__main__":

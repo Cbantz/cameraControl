@@ -5,6 +5,7 @@ from camera import CameraController
 from diffractometer_gui import Diffractometer_GUI
 import tracemalloc
 
+
 class GUI_OAT(QtWidgets.QApplication):
     '''
     Main application for the GUI OAT Viewer.

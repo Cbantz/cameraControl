@@ -113,6 +113,7 @@ class Camera_Worker(QtCore.QObject):
     com_ready = QtCore.Signal(tuple) # Emitted when a new frame has been processed. Contains center of mass of frame.
     first_frame = QtCore.Signal() # Emitted with the first frame processed to help GUI set up for live view.
     frame_raw_stats = QtCore.Signal(dict)
+    raw_frame_ready =QtCore.Signal(np.ndarray)
 
     def __init__(self, camera: asi.Camera, camera_controller : CameraController, settings: Camera_Settings = None, bg_roi: Background_ROI = None, parent = None):
         super().__init__(parent)
@@ -146,11 +147,19 @@ class Camera_Worker(QtCore.QObject):
     def capture_and_process_frame(self, bg_sub: bool = True) -> tuple[tuple, np.ndarray, dict]:
 
         frame = self.camera.capture_video_frame(timeout=self.settings.get_timeout())
+        self.raw_frame_ready.emit(frame)
         raw_frame_stats = {"Min": np.min(frame), "Max": np.max(frame)}
         if bg_sub:
             background_counts = np.average(frame[self.controller.bg_roi_slice])
-            bg_subbed_frame = frame - background_counts
+            # Cast to float32 for safe subtraction
+            temp = frame.astype(np.float32)
+            bg_subbed_frame = temp - np.float32(background_counts)
+
+            # Clamp negative values to 0
             bg_subbed_frame[bg_subbed_frame < 0] = 0
+
+            # Convert back to uint16
+            bg_subbed_frame = bg_subbed_frame.astype(np.uint16)
             com = center_of_mass(bg_subbed_frame)
             com_adjusted = (com[1], com[0])
             return(com_adjusted, bg_subbed_frame, raw_frame_stats)
@@ -168,6 +177,7 @@ class Camera_Worker(QtCore.QObject):
     def end_live(self):
         print("Ending live view")
         self.camera.stop_video_capture()
+
 
 
 
