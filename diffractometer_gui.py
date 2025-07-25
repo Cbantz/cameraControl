@@ -1,0 +1,36 @@
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtWidgets
+from camera import CameraController
+from roi_manager import ROI_Manager
+from diffractometer_tools import Diffractometer_Tools
+from viewpanel import ViewPanel
+class Diffractometer_GUI(QtWidgets.QWidget):
+    """
+    Central widget for diffractometer control GUI.
+    """
+    def __init__(self, camera: CameraController = None, roi_manager: ROI_Manager = None):
+        super().__init__(parent=None)
+        self.parent_layout = QtWidgets.QGridLayout()
+        self.setLayout(self.parent_layout)
+
+
+        #Instantiate Children
+        self.diff_tools = Diffractometer_Tools(camera=camera, roi_manager=roi_manager)
+        self.viewpanel = ViewPanel(roi_manager=roi_manager, camera=camera, diff_tools=self.diff_tools)
+
+        # Arrange Layout
+        self.parent_layout.addWidget(self.viewpanel, 0, 0, 2, 1)
+        self.parent_layout.addWidget(self.diff_tools.motor_control_widget, 1, 1, 1, 1)
+        self.parent_layout.addWidget(self.diff_tools.capture_manager.widget, 0, 1, 1, 1)
+        self.parent_layout.addWidget(self.diff_tools.angle_manager.widget, 2, 0 , 1, 1)
+
+
+if __name__ == "__main__":
+    app = pg.mkQApp()
+    ROIs = ROI_Manager()
+    camera = CameraController(roi_manager=ROIs)
+    widget = Diffractometer_GUI(camera=camera, roi_manager=ROIs)
+    widget.show()
+    app.exec()
+
+    
