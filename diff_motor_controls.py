@@ -5,14 +5,17 @@ from motor_controller import Motor_Controller
 
 class motor_control_widget(QtWidgets.QWidget):
 
-    def __init__(self, motor: Motor_Controller):
+    def __init__(self, motor: Motor_Controller = None):
         super().__init__(parent=None)
         layout = QtWidgets.QGridLayout()
         self.setLayout(layout)
         
         if(motor):
             self.motor = motor
+        else:
+            print("No Motor connected to Motor Control Widget")
         self.movement_panel = movement_control_panel()
+        self.set_up_motor_control_buttons()
         
         
 
@@ -55,12 +58,13 @@ class movement_control_panel(QtWidgets.QGroupBox):
     rel_move_grating = QtCore.Signal(float)
     def __init__(self):
         super().__init__(parent=None)
+        self.setMinimumWidth(500)
 
         # Label for camera section of controls.
         section_header_font = QtGui.QFont()
         section_header_font.setPointSize(14)
         camera_section_label = QtWidgets.QLabel("Camera Motor Controls")
-        camera_section_label.setMinimumHeight(20)
+        camera_section_label.setMinimumHeight(14)
         camera_section_label.setFont(section_header_font)
    
 
@@ -134,10 +138,10 @@ class movement_control_panel(QtWidgets.QGroupBox):
         g_minus_p5 = motor_rel_move_button(-0.5)
         g_minus_5 = motor_rel_move_button(-5)
         negative_grating_rel_buttons = [g_minus_5, g_minus_p5, g_minus_p05]
-        g_neg_fast = motor_move_button("<<", -1)
-        g_neg_slow = motor_move_button("<", -.5)
-        g_pos_slow = motor_move_button(">", .5)
-        g_pos_fast = motor_move_button(">>", 1)
+        g_neg_fast = motor_move_button("<<", -4)
+        g_neg_slow = motor_move_button("<", -1)
+        g_pos_slow = motor_move_button(">", 1)
+        g_pos_fast = motor_move_button(">>", 4)
         self.grating_indef_move_buttons = [g_neg_fast, g_neg_slow, g_pos_slow, g_pos_fast]
         self.grating_rel_buttons = positive_grating_rel_buttons + negative_grating_rel_buttons
         for button in negative_grating_rel_buttons + self.grating_indef_move_buttons + positive_grating_rel_buttons:

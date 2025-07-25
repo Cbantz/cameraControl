@@ -14,7 +14,10 @@ class Motor_Controller(QtCore.QObject):
 
     """
     esp = ik.newport.NewportESP301
-
+    camera_move_finished = QtCore.Signal()
+    grating_move_finished = QtCore.Signal()
+    camera_moving : bool = False
+    grating_moving : bool = False
 
 
     def __init__(self, port):
@@ -24,13 +27,31 @@ class Motor_Controller(QtCore.QObject):
         self.units = 7
         self.setup_axis(self.camera_axis, self.units)
         self.setup_axis(self.grating_axis, self.units)
+        self.polling_rate : float = 50
+        self.motion_monitor_timer = QtCore.QTimer()
+        self.motion_monitor_timer.setSingleShot(False)
+        self.motion_monitor_timer.setInterval(self.polling_rate)
+        self.motion_monitor_timer.timeout.connect(self.monitor_movement)
+        
     
     def connect(self):
-        self.camera_axis = self.controller.axis[0]
-        self.grating_axis = self.controller.axis[1]
+        self.camera_axis : ik.newport.NewportESP301.Axis = self.controller.axis[0]
+        self.grating_axis :  ik.newport.NewportESP301.Axis = self.controller.axis[1]
         print("Axes Connected.")
         self.camera_axis.enable()
         self.grating_axis.enable()
+
+    def monitor_movement(self):
+        if self.camera_axis.is_motion_done() == False:
+            self.camera_moving = True
+        elif self.camera_moving:
+            self.camera_move_finished.emit()
+
+        if self.grating_axis.is_motion_done() == False:
+            self.grating_moving = True
+        elif self.grating_moving:
+            self.grating_move_finished.emit()
+
 
     def setup_axis(self, axis: ik.newport.NewportESP301.Axis, units: ik.newport.NewportESP301.Axis.units):
         '''

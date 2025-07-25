@@ -7,7 +7,7 @@ from data_display_widget import Data_Display_Widget
 from viewfinder_buttons import ViewfinderButtons
 from viewfinder import Viewfinder
 from ee_processor import EE_Processor
-class ViewPanel(QtWidgets.QWidget):
+class ViewPanel(QtWidgets.QGroupBox):
     '''
     Widget for displaying a live feed from a camera, as well as related stats. Includes:
         - Buttons to control roi behavior.
@@ -37,9 +37,10 @@ class ViewPanel(QtWidgets.QWidget):
         self.grid_layout.addWidget(self.vf_buttons)
         self.grid_layout.addWidget(self.viewfinder)
         self.grid_layout.addWidget(self.data_panel)
-        self.grid_layout.addWidget(camera.settings.widget)
+        if camera:
+            self.grid_layout.addWidget(camera.settings.widget)
 
-        self.viewfinder.setMinimumHeight(300)
+        self.viewfinder.setMinimumHeight(150)
         
 
 if __name__ == "__main__":

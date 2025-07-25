@@ -22,6 +22,7 @@ class Diffractometer_GUI(QtWidgets.QWidget):
         self.parent_layout.addWidget(self.viewpanel, 0, 0, 2, 1)
         self.parent_layout.addWidget(self.diff_tools.motor_control_widget, 1, 1, 1, 1)
         self.parent_layout.addWidget(self.diff_tools.capture_manager.widget, 0, 1, 1, 1)
+        self.parent_layout.addWidget(self.diff_tools.angle_manager.widget, 2, 0 , 1, 1)
 
 
 if __name__ == "__main__":

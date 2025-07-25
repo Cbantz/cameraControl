@@ -17,6 +17,7 @@ class CameraController(QtCore.QObject):
         # Initializations
         asi.init(r"C:\Program Files\ASIStudio\ASICamera2.dll")
         try:
+            print(F"Cameras attached: {asi.list_cameras()}")
             self.camera = asi.Camera(asi.list_cameras()[0])
         except IndexError as ie:
             print("No camera is connected. Camera controller will not function.", ie)
@@ -66,7 +67,7 @@ class Camera_Settings(QtCore.QObject):
     '''
     Settings class that every camera object will have.
     '''
-    bins: int = 1
+    bins: int = 4
     image_type = asi.ASI_IMG_RAW16
     exposure = 250
     gain = 200
