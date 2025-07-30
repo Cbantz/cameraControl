@@ -64,13 +64,16 @@ class HeaderManager:
 
     def get_header(self, time: datetime):
         header : fits.Header = fits.Header()
-        header.append(Card("date-obs", time.strftime("%Y-%m-%dT%H:%M:%S"), "Observation Datetime."))
+        header.append(Card("DATE-OBS", time.strftime("%Y-%m-%dT%H:%M:%S"), "Observation Datetime."))
         header.append(Card("SFTWARE", "GUI OAT", "Software used to capture this image."))
-        header.append(Card("Camera", self.camera.camera.get_camera_property()["Name"], "Camera used to capture this image."))
+        header.append(Card("CAMERA", self.camera.camera.get_camera_property()["Name"], "Camera used to capture this image."))
         header.append(Card("EXPOSURE", str(self.camera.camera.get_control_value(asi.ASI_EXPOSURE)), f"Exposure Time (microseconds)"))
+        header.append(Card("GAIN", self.camera.camera.get_control_value(asi.ASI_GAIN), "Camera Gain"))
         if self.angle_manager and self.angle_manager.grating_pos_offset and self.angle_manager.camera_pos_offset:
-            header.append(Card("Alpha", str(self.angle_manager.alpha()), "Angle from the grating normal to the incident light."))
-            header.append(Card("Beta", str(self.angle_manager.beta()), "Angle from the grating normal to the diffraction order"))
+            header.append(Card("ALPHA", str(self.angle_manager.alpha()), "Angle from the grating normal to the incident light."))
+            header.append(Card("BETA", str(self.angle_manager.beta()), "Angle from the grating normal to the diffraction order"))
+            header.append(Card("CAMSTAGE", self.angle_manager.camera_stage_angle(), "Camera stage angle relative to incident light."))
+            header.append(Card("GRTSTAGE", self.angle_manager.grating_stage_angle(), "Grating stage angle relative to incident light."))
         return header
 
 if __name__ == "__main__":
