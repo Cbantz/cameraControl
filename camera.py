@@ -2,11 +2,11 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore
 import zwoasi as asi
 import numpy as np
-from scipy.ndimage import center_of_mass
 from roi_manager import ROI_Manager
 from displayimageitem import Display_Imi
 from bg_roi import Background_ROI
 from camera_settings_widget import Camera_Settings_Widget
+from spot_tracker import Spot_Tracker
 
 class CameraController(QtCore.QObject):
     start_req = QtCore.Signal() # Use to start camera
@@ -25,11 +25,14 @@ class CameraController(QtCore.QObject):
         if roi_manager:
             self.bg_roi = roi_manager.bg_roi
             self.bg_roi.sigRegionChangeFinished.connect(self.bg_array_moved)
+            self.ee_roi = roi_manager.ee_roi
         self.settings = Camera_Settings(self.camera)
         
+        self.imi = Display_Imi()
+
 
         # Set Up Worker
-        self.worker = Camera_Worker(self.camera, self, self.settings, self.bg_roi)
+        self.worker = Camera_Worker(self.camera, self, self.settings)
         self.worker_thread = QtCore.QThread()
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.start()
@@ -37,7 +40,7 @@ class CameraController(QtCore.QObject):
         print("Camera Initialized")
 
         # Set up display
-        self.imi = Display_Imi()
+
         self.worker.frame_ready.connect(self.imi.setImage)
 
     def start_live_view(self):
@@ -116,20 +119,20 @@ class Camera_Worker(QtCore.QObject):
     frame_raw_stats = QtCore.Signal(dict)
     raw_frame_ready =QtCore.Signal(np.ndarray)
 
-    def __init__(self, camera: asi.Camera, camera_controller : CameraController, settings: Camera_Settings = None, bg_roi: Background_ROI = None, parent = None):
+    def __init__(self, camera: asi.Camera, camera_controller : CameraController, settings: Camera_Settings = None, parent = None):
         super().__init__(parent)
         self.settings = settings
         self.camera = camera
         self.controller = camera_controller
+        self.spot_tracker = Spot_Tracker(self.controller.imi, self.controller.ee_roi)
         self.controller.start_req.connect(self.start_live)
 
 
     def start_live(self):
         print("Starting live view")
         self.camera.start_video_capture()
-        results = self.capture_and_process_frame(bg_sub=False)
         if self.controller.is_active:
-            self.emit_results(results[0], results[1], results[2])
+            self.capture_and_process_frame(bg_sub=False)
             self.first_frame.emit()
             while self.controller.is_active:
                 self.run_live()
@@ -138,9 +141,9 @@ class Camera_Worker(QtCore.QObject):
             self.end_live()
 
     def run_live(self):
-        results = self.capture_and_process_frame()
+        
         if self.controller.is_active:
-            self.emit_results(results[0], results[1], results[2])
+            self.capture_and_process_frame()
 
         else:
             self.end_live()
@@ -150,6 +153,7 @@ class Camera_Worker(QtCore.QObject):
         frame = self.camera.capture_video_frame(timeout=self.settings.get_timeout())
         self.raw_frame_ready.emit(frame)
         raw_frame_stats = {"Min": np.min(frame), "Max": np.max(frame)}
+        self.frame_raw_stats.emit(raw_frame_stats)
         if bg_sub:
             background_counts = np.average(frame[self.controller.bg_roi_slice])
             # Cast to float32 for safe subtraction
@@ -161,19 +165,13 @@ class Camera_Worker(QtCore.QObject):
 
             # Convert back to uint16
             bg_subbed_frame = bg_subbed_frame.astype(np.uint16)
-            com = center_of_mass(bg_subbed_frame)
-            com_adjusted = (com[1], com[0])
-            return(com_adjusted, bg_subbed_frame, raw_frame_stats)
+            self.frame_ready.emit(bg_subbed_frame)
+            self.spot_tracker.get_com(bg_subbed_frame)
+
         
         else:
-            com = center_of_mass(frame)
-            com_adjusted = (com[1], com[0])
-            return(com_adjusted, frame, raw_frame_stats)
-    
-    def emit_results(self, com: tuple, frame: np.ndarray, rfs: dict):
-        self.frame_ready.emit(frame)
-        self.com_ready.emit(com)
-        self.frame_raw_stats.emit(rfs)
+            self.frame_ready.emit(frame)
+            self.spot_tracker.get_com(frame)
     
     def end_live(self):
         print("Ending live view")

@@ -36,12 +36,12 @@ class Angle_Manager(QtCore.QObject):
 
     def alpha(self):
         if self.grating_pos_offset:
-            return - self.grating_stage_angle()
+            return round(- self.grating_stage_angle(), 5)
         
     def beta(self):
         if self.camera_pos_offset:
             print(f"Calculating beta, grating pos: {self.grating_stage_angle()}, camera pos: {self.camera_stage_angle()}")
-            return self.camera_stage_angle() - self.grating_stage_angle()
+            return round(self.camera_stage_angle() - self.grating_stage_angle(), 5)
 
         
     

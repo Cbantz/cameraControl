@@ -30,8 +30,11 @@ class Capture_Manager(QtCore.QObject):
         self.widget.button.clicked.connect(self.capture_button_pressed)
 
     def capture_button_pressed(self):
-        self.filepath = self.widget.folder_select.folder_selected
-        self.capture = True
+        if self.widget.folder_select.folder_selected:
+            self.filepath = self.widget.folder_select.folder_selected
+            self.capture = True
+        else:
+            print("No folder selected to save to.")
     
 
 
@@ -69,8 +72,8 @@ class HeaderManager:
         header.append(Card("Camera", self.camera.camera.get_camera_property()["Name"], "Camera used to capture this image."))
         header.append(Card("EXPOSURE", str(self.camera.camera.get_control_value(asi.ASI_EXPOSURE)), f"Exposure Time (microseconds)"))
         if self.angle_manager and self.angle_manager.grating_pos_offset and self.angle_manager.camera_pos_offset:
-            header.append(Card("Alpha", str(self.angle_manager.alpha()), "Angle from the grating normal to the incident light."))
-            header.append(Card("Beta", str(self.angle_manager.beta()), "Angle from the grating normal to the diffraction order"))
+            header.append(Card("Alpha", str(self.angle_manager.alpha()), "Grating Normal to Incident"))
+            header.append(Card("Beta", str(self.angle_manager.beta()), "Grating Normal to Camera Center"))
         return header
 
 if __name__ == "__main__":

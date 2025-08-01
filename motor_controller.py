@@ -21,9 +21,10 @@ class Motor_Controller(QtCore.QObject):
 
 
     def __init__(self, port):
+        super().__init__(parent=None)
         self.controller = self.esp.open_serial(port, baud=921600)
         print("Controller Connected")
-        self.connect()
+        self.connect_controller()
         self.units = 7
         self.setup_axis(self.camera_axis, self.units)
         self.setup_axis(self.grating_axis, self.units)
@@ -32,9 +33,10 @@ class Motor_Controller(QtCore.QObject):
         self.motion_monitor_timer.setSingleShot(False)
         self.motion_monitor_timer.setInterval(self.polling_rate)
         self.motion_monitor_timer.timeout.connect(self.monitor_movement)
+        self.motion_monitor_timer.start()
         
     
-    def connect(self):
+    def connect_controller(self):
         self.camera_axis : ik.newport.NewportESP301.Axis = self.controller.axis[0]
         self.grating_axis :  ik.newport.NewportESP301.Axis = self.controller.axis[1]
         print("Axes Connected.")
@@ -42,15 +44,19 @@ class Motor_Controller(QtCore.QObject):
         self.grating_axis.enable()
 
     def monitor_movement(self):
-        if self.camera_axis.is_motion_done() == False:
+        if self.camera_axis.is_motion_done == False:
             self.camera_moving = True
         elif self.camera_moving:
+            self.camera_moving = False
             self.camera_move_finished.emit()
+            print("Camera Move Finished")
 
-        if self.grating_axis.is_motion_done() == False:
+        if self.grating_axis.is_motion_done == False:
             self.grating_moving = True
         elif self.grating_moving:
+            self.grating_moving = False
             self.grating_move_finished.emit()
+            print("Grating Move Finished")
 
 
     def setup_axis(self, axis: ik.newport.NewportESP301.Axis, units: ik.newport.NewportESP301.Axis.units):
@@ -101,20 +107,36 @@ class Motor_Controller(QtCore.QObject):
         self.grating_axis.stop_motion()
         print("Stopping Grating")
 
-    def rel_move_cam(self, distance: float):
+    def rel_move_cam(self, distance: float, blocking: bool = False):
         '''
         Rotates the camera axis a given amount.
         '''
         print(f"Camera relative move of {distance}")
-        self.camera_axis.move(distance, absolute=False)
+        self.camera_axis.move(distance, absolute=False, block=blocking)
         print(self.camera_axis.velocity)
 
-    def rel_move_grating(self, distance):
+    def rel_move_grating(self, distance, blocking: bool = False):
         '''
         Rotates the grating axis a given amount.
         '''
         print(f"Grating relative move of {distance}")
-        self.grating_axis.move(distance, absolute=False)
+        self.grating_axis.move(distance, absolute=False, block=blocking)
+
+    def abs_move_cam(self, distance: float, blocking: bool = False):
+        '''
+        Rotates the camera axis to a given angle.
+        '''
+        print(f"Camera absolute move of {distance}")
+        self.camera_axis.move(distance, absolute=True, block=blocking)
+        print(self.camera_axis.velocity)
+
+    def abs_move_grating(self, position, blocking: bool = False):
+        '''
+        Rotates the grating axis to a given angle.
+        '''
+        print(f"Grating absolute move of {position}")
+        self.grating_axis.velocity = 0.5
+        self.grating_axis.move(position, absolute=True, block=blocking)
     
     def abort_movement(self):
         '''

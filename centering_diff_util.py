@@ -20,41 +20,22 @@ class Centering_Monitor(QtCore.QObject):
     is_x_centered = False
 
 
-    def __init__(self, camera: CameraController, tolerance: int = 20, roi_manager: ROI_Manager = None):
+    def __init__(self, camera: CameraController, tolerance: int = 5):
         super().__init__(parent=None)
         self.centering_tolerance = tolerance
         if camera:
             self.camera = camera
             self.imi = camera.imi
             self.roi = self.camera.camera.get_roi()
+            self.camera.worker.spot_tracker.focused_com_update.connect(self.com_received)
         else:
             print("No Camera connected to Centering utility")
         
-        if roi_manager:
-            self.ee_roi = roi_manager.ee_roi
-            self.center_roi = self.ee_roi.center_roi
 
-            self.centroid_button = QtWidgets.QPushButton("Centroid")
-            self.centroid_button.setCheckable(True)
+            
 
-            self.inner_com_check = QtWidgets.QCheckBox("Center Inside ROI Only")
-            self.inner_com_check.checkStateChanged.connect(self.use_inner_changed)
-
-            self.camera.worker.com_ready.connect(self.com_received)
-        else:
-            print("No ROI Manager connected to Centering utility")
 
     def com_received(self, com):
-        if self.centroid_button.isChecked():
-            self.ee_roi.set_center_pos(com)
-        if self.inner_com_check.isChecked():
-            inner_com = center_of_mass(self.ee_roi.getArrayRegion(self.imi.image, self.imi))
-            ee_pos = self.ee_roi.pos()
-            com = (ee_pos[0] + inner_com[1], ee_pos[1] + inner_com[0])
-            
-            self.ee_roi.center_roi.set_center_pos(com)
-                
- 
         self.check_centered(com)
 
     def check_centered(self, com: tuple):
@@ -79,9 +60,4 @@ class Centering_Monitor(QtCore.QObject):
             self.is_x_centered = False
             self.v_exit_center.emit()
 
-    def use_inner_changed(self):
-        if self.inner_com_check.isChecked():
-            self.ee_roi.center_roi.setVisible(True)
-        else:
-            self.ee_roi.center_roi.setVisible(False)
 

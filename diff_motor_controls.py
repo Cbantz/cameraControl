@@ -15,7 +15,11 @@ class motor_control_widget(QtWidgets.QWidget):
         else:
             print("No Motor connected to Motor Control Widget")
         self.movement_panel = movement_control_panel()
-        self.set_up_motor_control_buttons()
+
+        try:
+            self.set_up_motor_control_buttons()
+        except AttributeError as e:
+            print(e)
         
         
 
