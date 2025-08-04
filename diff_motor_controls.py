@@ -184,7 +184,7 @@ class movement_control_panel(QtWidgets.QGroupBox):
     def grating_rel_move_button_pressed(self):
         try: 
             axis = "grating"
-            distance = float()
+            distance = float(self.grating_custom_rel_edit.text())
             print(axis, distance)
             self.rel_move_grating.emit(distance)
         except Exception as e:
