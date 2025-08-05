@@ -25,6 +25,7 @@ class Spot_Tracker(QtCore.QObject):
             inner_com = center_of_mass(self.ee_roi.getArrayRegion(frame, self.imi))
             ee_pos = self.ee_roi.pos()
             com = (ee_pos[0] + inner_com[1], ee_pos[1] + inner_com[0])
+            
 
         self.focused_com_update.emit(com)
         self.current_com = com
