@@ -52,6 +52,7 @@ class motor_control_widget(QtWidgets.QWidget):
         self.movement_panel.rel_move_grating.connect(self.motor.rel_move_grating)
 
         self.movement_panel.abort_button.clicked.connect(self.motor.abort_movement)
+        self.movement_panel.stop_button.clicked.connect(self.motor.stop_movement)
 
 
 class movement_control_panel(QtWidgets.QGroupBox):
@@ -156,6 +157,10 @@ class movement_control_panel(QtWidgets.QGroupBox):
         self.abort_button = QtWidgets.QPushButton("ABORT")
         self.abort_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Expanding)
 
+        # Stop Button
+        self.stop_button = QtWidgets.QPushButton("STOP")
+        self.stop_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Expanding)
+
 
         layout = QtWidgets.QGridLayout()
         layout.addWidget(camera_section_label, 0, 0)
@@ -164,7 +169,8 @@ class movement_control_panel(QtWidgets.QGroupBox):
         layout.addWidget(grating_section_label, 3, 0)
         layout.addWidget(self.grating_custom_rel_widget, 4, 0)
         layout.addWidget(grating_move_buttons, 5, 0)
-        layout.addWidget(self.abort_button, 0, 1, 6, 1)
+        layout.addWidget(self.abort_button, 0, 1, 3, 1)
+        layout.addWidget(self.stop_button, 3, 1, 3, 1)
 
         
         

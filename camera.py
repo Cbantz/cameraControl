@@ -61,6 +61,8 @@ class CameraController(QtCore.QObject):
         if self.is_active:
             self.bg_roi_slice = self.bg_roi.getArraySlice(self.imi.image, self.imi)[0]
 
+    def 
+
 
             
     
@@ -72,8 +74,8 @@ class Camera_Settings(QtCore.QObject):
     '''
     bins: int = 4
     image_type = asi.ASI_IMG_RAW16
-    exposure = 250
-    gain = 200
+    exposure = 1
+    gain = 1
     
     def __init__(self, camera: asi.Camera, parent = None):
         super().__init__(parent)

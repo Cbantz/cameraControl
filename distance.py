@@ -2,7 +2,9 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtWidgets
 from motor_controller import Motor_Controller
 from camera import CameraController
+from instruments.newport.newportesp301 import NewportESP301
 import numpy as np
+from spot_averager import Spot_Averager
 
 class Distance_Scanner(QtCore.QObject):
     ready_for_frame: bool = False
@@ -12,7 +14,8 @@ class Distance_Scanner(QtCore.QObject):
         self.camera = camera
         self.motor = motor
         if self.motor:
-            self.motor.grating_move_finished.connect(self.motor_move_finished)
+            self.selected_stage : NewportESP301.Axis = self.motor.camera_axis
+            self.motor.camera_move_finished.connect(self.motor_move_finished)
         else:
             print("No Motor connected to Distance Calibration")
         if self.camera:
@@ -24,8 +27,8 @@ class Distance_Scanner(QtCore.QObject):
         self.rel_positions = []
         self.est_ds = []
 
-    def calibrate(self, range_angles: float = 4.5, datapoints_per_side: int = 10, automatic: bool = False):
-        starting_angle = self.motor.grating_axis.position.magnitude
+    def calibrate(self, range_angles: float = 9, datapoints_per_side: int = 10, automatic: bool = False):
+        starting_angle = self.selected_stage.position.magnitude
         self.center_x_val = self.camera.worker.spot_tracker.current_com[0]
         print(f"Starting calibration at {starting_angle}")
         self.abs_angles = []
@@ -48,11 +51,13 @@ class Distance_Scanner(QtCore.QObject):
         self.move_to_next_pos()
             
     def move_to_next_pos(self):
-        self.motor.abs_move_grating(self.abs_angles[len(self.rel_positions)])
+        self.selected_stage.velocity = 4
+        self.selected_stage.move(self.abs_angles[len(self.rel_positions)])
         self.waiting_for_move_fin = True
 
 
     def motor_move_finished(self):
+        print("Distance acknowledges finished move")
         if self.waiting_for_move_fin:
             self.waiting_for_move_fin = False
             if self.auto:

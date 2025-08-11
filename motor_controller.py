@@ -111,6 +111,7 @@ class Motor_Controller(QtCore.QObject):
         '''
         Rotates the camera axis a given amount.
         '''
+        self.camera_axis.velocity = 4
         print(f"Camera relative move of {distance}")
         self.camera_axis.move(distance, absolute=False, block=blocking)
         print(self.camera_axis.velocity)
@@ -119,6 +120,7 @@ class Motor_Controller(QtCore.QObject):
         '''
         Rotates the grating axis a given amount.
         '''
+        self.grating_axis.velocity = 2
         print(f"Grating relative move of {distance}")
         self.grating_axis.move(distance, absolute=False, block=blocking)
 
@@ -148,6 +150,11 @@ class Motor_Controller(QtCore.QObject):
         self.camera_axis.abort_motion()
         self.grating_axis.abort_motion()
         print("Movement Aborted.")
+    
+    def stop_movement(self):
+        print("Stopping")
+        self.camera_axis.stop_motion()
+        self.grating_axis.stop_motion()
 
     
 

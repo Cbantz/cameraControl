@@ -105,7 +105,7 @@ class Worker(QtCore.QObject):
         r_max = np.shape(roi_region)[0]/2 # Max radius to be searched (half of size(diameter))
 
         # Calculate half by splitting radius search in half until possible is only one pixel
-        while r_max-r_min > 1:
+        while r_max-r_min > 0.49:
             r_mid = (r_max+r_min)/2
             aperture = CircularAperture((np.shape(roi_region)[0]/2,np.shape(roi_region)[1]/2), r = r_mid)
             aperture_counts = aperture.do_photometry(roi_region, method='center')[0]
