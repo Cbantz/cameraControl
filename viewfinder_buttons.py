@@ -17,7 +17,7 @@ class ViewfinderButtons(QtWidgets.QWidget):
         self.setLayout(self.hlayout)
 
         self.reset_roi_button = QtWidgets.QPushButton("Reset ROIs")
-        self.show_hide_crosshairs_button = QtWidgets.QPushButton("Show/hide Crosshair")
+        # self.show_hide_crosshairs_button = QtWidgets.QPushButton("Show/hide Crosshair")
 
 
         if camera:
@@ -27,7 +27,7 @@ class ViewfinderButtons(QtWidgets.QWidget):
         else:
             print("No Camera connected to Viewfinder Buttons")
         self.hlayout.addWidget(self.reset_roi_button)
-        self.hlayout.addWidget(self.show_hide_crosshairs_button)
+        # self.hlayout.addWidget(self.show_hide_crosshairs_button)
 
 
             

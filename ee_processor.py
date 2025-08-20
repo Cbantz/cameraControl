@@ -118,7 +118,7 @@ class Worker(QtCore.QObject):
         while r_max-r_min > 0.01:
             r_mid = (r_max+r_min)/2
             aperture = CircularAperture((np.shape(roi_region)[0]/2,np.shape(roi_region)[1]/2), r = r_mid)
-            aperture_counts = aperture.do_photometry(roi_region, method='center')[0]
+            aperture_counts = aperture.do_photometry(roi_region, method='exact')[0]
             if ee != 0:
                 pc_enc = aperture_counts / ee
                 if(pc_enc > 0.5):
