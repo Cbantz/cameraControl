@@ -10,6 +10,7 @@ from spot_tracker import Spot_Tracker
 
 class CameraController(QtCore.QObject):
     start_req = QtCore.Signal() # Use to start camera
+    stop_req = QtCore.Signal() # Sent at close to end camera with no error
     def __init__(self, parent = None, roi_manager: ROI_Manager = None):
         super().__init__(parent)
         self.is_active: bool = False
@@ -33,15 +34,24 @@ class CameraController(QtCore.QObject):
 
         # Set Up Worker
         self.worker = Camera_Worker(self.camera, self, self.settings)
+        self.start_req.connect(self.worker.start_live)
+        self.stop_req.connect(self.worker.end_live)
         self.worker_thread = QtCore.QThread()
+        self.worker.stopped.connect(self.clear_worker_thread)
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.start()
         self.worker.first_frame.connect(self.bg_array_moved)
+
         print("Camera Initialized")
 
         # Set up display
 
         self.worker.frame_ready.connect(self.imi.setImage)
+
+
+        #Set up for quit:
+        app = QtCore.QCoreApplication.instance()
+        app.aboutToQuit.connect(self.about_to_quit)
 
     def start_live_view(self):
         self.set_active()
@@ -61,7 +71,22 @@ class CameraController(QtCore.QObject):
         if self.is_active:
             self.bg_roi_slice = self.bg_roi.getArraySlice(self.imi.image, self.imi)[0]
 
-    def 
+    def about_to_quit(self):
+        '''
+        Runs at application exit, closes thread so we don't get errors.
+        '''
+        print("about to quit")
+        self.set_active(False)
+        self.stop_req.emit()
+
+        
+
+    def clear_worker_thread(self):
+        print("clearing worker thread")
+        self.worker_thread.quit()
+        self.worker_thread.wait()
+
+
 
 
             
@@ -74,7 +99,7 @@ class Camera_Settings(QtCore.QObject):
     '''
     bins: int = 4
     image_type = asi.ASI_IMG_RAW16
-    exposure = 1
+    exposure = 32
     gain = 1
     
     def __init__(self, camera: asi.Camera, parent = None):
@@ -120,6 +145,7 @@ class Camera_Worker(QtCore.QObject):
     first_frame = QtCore.Signal() # Emitted with the first frame processed to help GUI set up for live view.
     frame_raw_stats = QtCore.Signal(dict)
     raw_frame_ready =QtCore.Signal(np.ndarray)
+    stopped = QtCore.Signal()
 
     def __init__(self, camera: asi.Camera, camera_controller : CameraController, settings: Camera_Settings = None, parent = None):
         super().__init__(parent)
@@ -127,32 +153,25 @@ class Camera_Worker(QtCore.QObject):
         self.camera = camera
         self.controller = camera_controller
         self.spot_tracker = Spot_Tracker(self.controller.imi, self.controller.ee_roi)
-        self.controller.start_req.connect(self.start_live)
-
 
     def start_live(self):
         print("Starting live view")
         self.camera.start_video_capture()
-        if self.controller.is_active:
-            self.capture_and_process_frame(bg_sub=False)
-            self.first_frame.emit()
-            while self.controller.is_active:
-                self.run_live()
 
-        else:
-            self.end_live()
+        self.capture_and_process_frame(bg_sub=False)
+        self.first_frame.emit()
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.run_live)
+        self.timer.start(0)
 
     def run_live(self):
-        
-        if self.controller.is_active:
-            self.capture_and_process_frame()
-
-        else:
-            self.end_live()
+        self.capture_and_process_frame()
 
     def capture_and_process_frame(self, bg_sub: bool = True) -> tuple[tuple, np.ndarray, dict]:
 
+        
         frame = self.camera.capture_video_frame(timeout=self.settings.get_timeout())
+      
         self.raw_frame_ready.emit(frame)
         raw_frame_stats = {"Min": np.min(frame), "Max": np.max(frame)}
         self.frame_raw_stats.emit(raw_frame_stats)
@@ -177,7 +196,23 @@ class Camera_Worker(QtCore.QObject):
     
     def end_live(self):
         print("Ending live view")
-        self.camera.stop_video_capture()
+        self.timer.stop()
+        print("Timer Stopped")
+        self.timer.deleteLater()
+        print("Timer.deleted")
+        try:
+            self.camera.stop_video_capture()
+            print("stopped camera")
+        except Exception as e:
+            print(f"Failed to stop camera: {e}")
+        QtCore.QMetaObject.invokeMethod(
+        QtCore.QThread.currentThread(),
+        "quit",
+        QtCore.Qt.QueuedConnection
+    )
+        self.stopped.emit()
+        print("Stopped emitted")
+
 
 
 

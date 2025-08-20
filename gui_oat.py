@@ -31,19 +31,19 @@ class GUI_OAT(QtWidgets.QApplication):
         self.main_win.setCentralWidget(self.diff_gui)
         self.camera.start_live_view()
 
-        self.trace_button = QtWidgets.QPushButton("Trace")
-        self.trace_button.clicked.connect(self.take_memory_snapshot)
-        self.trace_button.show()
+    #     self.trace_button = QtWidgets.QPushButton("Trace")
+    #     self.trace_button.clicked.connect(self.take_memory_snapshot)
+    #     self.trace_button.show()
 
     
-    def take_memory_snapshot(self):
+    # def take_memory_snapshot(self):
 
-        snapshot = tracemalloc.take_snapshot()
-        top_stats = snapshot.statistics('lineno')
+    #     snapshot = tracemalloc.take_snapshot()
+    #     top_stats = snapshot.statistics('lineno')
 
-        print("\n[ Top memory usage lines ]")
-        for stat in top_stats[:10]:
-            print(stat)
+    #     print("\n[ Top memory usage lines ]")
+    #     for stat in top_stats[:10]:
+    #         print(stat)
 
 if __name__ == "__main__":
     GUI_OAT().exec()

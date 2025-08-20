@@ -44,7 +44,7 @@ class Diffractometer_Tools(QtCore.QObject):
         self.angle_manager = Angle_Manager(motor_controller=self.motor)
 
         #   Calibrations
-        self.calibration_manager = Calibration_Manager(camera=camera, motor=self.motor)
+        self.calibration_manager = Calibration_Manager(camera=camera, motor=self.motor, roi_manager=roi_manager)
 
         # Set up Camera
         if camera:
@@ -52,6 +52,15 @@ class Diffractometer_Tools(QtCore.QObject):
             self.capture_manager = Capture_Manager(camera=camera, angle_manager=self.angle_manager)
         else:
             print("No camera connected to Diffractometer tools")
+
+    def closeEvent(self, event):
+        '''
+        Runs at application exit, closes thread so we don't get errors.
+        '''
+        self.worker_thread.quit()
+        self.worker_thread.wait()
+        event.accept()
+
 
 
         

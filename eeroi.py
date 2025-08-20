@@ -31,6 +31,7 @@ class EE_ROI(pg.CircleROI):
         return centered_pos
 
 class Half_ROI(pg.CircleROI):
+    resized = QtCore.Signal(float)
     def __init__(self, pos, size=None, radius=None, movable=False, ee_roi: EE_ROI = None):
         super().__init__(pos, size, radius=radius, movable=movable)
         self.removeHandle(0)
@@ -46,8 +47,9 @@ class Half_ROI(pg.CircleROI):
         ee_rad = self.ee_roi.size().x()/2
         self.setPos((ee_pos_x + ee_rad - self.radius(), ee_pos_y+ee_rad-self.radius()))
 
-    def resize(self, radius: int):
+    def resize(self, radius: float):
         self.setSize(radius * 2, center=(0.5,0.5))
+        self.resized.emit(radius)
 
 class Center_Spot(pg.CircleROI):
     def __init__(self, pos, radius=2, movable = False):

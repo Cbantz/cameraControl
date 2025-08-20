@@ -51,6 +51,16 @@ class EE_Processor(QtCore.QObject):
         if self.is_requested:
             self.calc_req.emit()
             self.is_requested = False
+
+            
+    def closeEvent(self, event):
+        '''
+        Runs at application exit, closes thread so we don't get errors.
+        '''
+        self.worker_thread.quit()
+        self.worker_thread.wait()
+        event.accept()
+
     
 
     
@@ -65,7 +75,7 @@ class Worker(QtCore.QObject):
     """
     is_busy: bool = False # Can take a new frame
     ee_ready = QtCore.Signal(float, float, float) # Results of calculations
-    half_ready = QtCore.Signal(int) # Results
+    half_ready = QtCore.Signal(float) # Results
     completed = QtCore.Signal() # Used to check for a new frame
 
     def __init__(self, roi_manager: ROI_Manager = None, imi: Display_Imi = None, processor: EE_Processor = None):
@@ -105,7 +115,7 @@ class Worker(QtCore.QObject):
         r_max = np.shape(roi_region)[0]/2 # Max radius to be searched (half of size(diameter))
 
         # Calculate half by splitting radius search in half until possible is only one pixel
-        while r_max-r_min > 0.49:
+        while r_max-r_min > 0.01:
             r_mid = (r_max+r_min)/2
             aperture = CircularAperture((np.shape(roi_region)[0]/2,np.shape(roi_region)[1]/2), r = r_mid)
             aperture_counts = aperture.do_photometry(roi_region, method='center')[0]

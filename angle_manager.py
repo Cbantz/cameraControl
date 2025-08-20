@@ -5,9 +5,8 @@ from angle_manager_widget import Widget
 from motor_controller import Motor_Controller
 
 class Angle_Manager(QtCore.QObject):
-    grating_pos_offset : float
-    camera_pos_offset : float
-    
+    grating_pos_offset : float = None
+    camera_pos_offset : float = None
     def __init__(self, motor_controller : Motor_Controller = None):
         super().__init__(parent = None)
         if motor_controller:

@@ -16,13 +16,16 @@ class Camera_Settings_Widget(QtWidgets.QWidget):
         self.set_up_gain()
 
     def set_up_exposure(self):
-        self.exposure_widget = Exposure_Setting_Widget((0, 100000))
+        self.exposure_widget = Exposure_Setting_Widget((32, 100000))
         self.grid_layout.addWidget(self.exposure_widget, 1, 0, 1, 2)
+        self.exposure_widget.slider_edit.setText(str(32))
 
 
     def set_up_gain(self):
-        self.gain_widget = Gain_Setting_Widget((0, 800))
+        self.gain_widget = Gain_Setting_Widget((1, 800))
         self.grid_layout.addWidget(self.gain_widget, 2, 0, 1, 2)
+        self.gain_widget.slider.setValue(1)
+        self.gain_widget.slider_edit.setText(str(1))
 
 
 

@@ -33,16 +33,12 @@ class Crosshairs(QtCore.QObject):
 
 
     def show_centered_h(self):
-        print("centered y")
         self.h_crosshair.setPen(pg.mkPen('g'))
     def show_centered_v(self):
-        print("centered x")
         self.v_crosshair.setPen(pg.mkPen('g'))
     def reset_pen_h(self):
-        print("un-centered y")
         self.h_crosshair.setPen(pg.mkPen('w'))
     def reset_pen_v(self):
-        print("uncentered x")
         self.v_crosshair.setPen(pg.mkPen('w'))
 
 if __name__ == "__main__":

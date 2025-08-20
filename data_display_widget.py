@@ -95,7 +95,7 @@ class Data_Form(QtWidgets.QWidget):
         self.roi_radius.setText(str(np.round(radius)))
 
     def set_half_label(self, radius):
-        self.half_label.setText(str(radius))
+        self.half_label.setText(str(round(radius, 3)))
 
     def set_ee_label(self, ee: float, pc_enc: float, total_sum : float):
         self.pc_enc_label.setText(f"{np.round(pc_enc * 100, 4)}%: {int(np.round(ee))}/{int(np.round(total_sum))}")
