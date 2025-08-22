@@ -18,6 +18,9 @@ class spot_size_live(pg.PlotWidget):
         self.sizes = []
         self.start_time = time.time()
         self.plot : pg.PlotDataItem = self.plotItem.plot([], [], symbol='o')
+        self.setTitle("Spot Size")
+        self.setLabel('bottom', "Time (s)")
+        self.setLabel('left', "50% Encircled Energy Radius")
         self.show()
 
     def new_size(self, radius):

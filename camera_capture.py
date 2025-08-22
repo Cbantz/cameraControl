@@ -36,7 +36,7 @@ class Capture_Manager(QtCore.QObject):
             return
             
         self.filepath = f"{main_folder}/{subfolder}" if subfolder else main_folder
-        self.filename = name
+        self.filename = name if name else self.widget.name_edit.text()
         self.capture = True
 
     

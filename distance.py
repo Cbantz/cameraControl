@@ -32,15 +32,14 @@ class Distance_Scanner(QtCore.QObject):
         self.abs_angles = []
         step_size = range_angles / datapoints_per_side
         print(f"step size: {step_size}")
-        # for i in range(datapoints_per_side):
-        #     self.abs_angles.append(starting_angle - range_angles + (i * step_size))
-        for i in range (datapoints_per_side):
+        for i in range(datapoints_per_side):
+            self.abs_angles.append(starting_angle - ((i+1) * step_size))
             self.abs_angles.append(starting_angle + (i + 1)*step_size)
 
 
-        print(f"Absolute Positions: {self.abs_angles}")
+        print(f"Absolute Angles: {self.abs_angles}")
         self.rel_angles = [starting_angle - abs_angle for abs_angle in self.abs_angles]
-        print(f"Relative Positions: {self.rel_angles}")
+        print(f"Relative Angles: {self.rel_angles}")
         self.results_widget = pg.PlotWidget()
         self.results_plot : pg.PlotDataItem = self.results_widget.plot([], [], symbol='o')
         self.results_widget.show()
@@ -49,7 +48,7 @@ class Distance_Scanner(QtCore.QObject):
         self.move_to_next_pos()
             
     def move_to_next_pos(self):
-        self.selected_stage.velocity = 4
+        self.selected_stage.velocity = 1
         self.selected_stage.move(self.abs_angles[len(self.rel_positions)])
         self.waiting_for_move_fin = True
 
@@ -64,22 +63,23 @@ class Distance_Scanner(QtCore.QObject):
 
     def spot_received(self, com : tuple):
 
+        print(f"Average Received: {com}")
         rel_spot_pos = self.center_x_val - com[0]
         print(f"Set Relative Spot Position at {rel_spot_pos} ({self.center_x_val}-{com[0]})")
-        self.est_ds.append(self.estimate_d(rel_spot_pos, self.rel_angles[len(self.rel_positions)] * 2))
+        self.est_ds.append(self.estimate_d(rel_spot_pos, self.rel_angles[len(self.rel_positions)]))
         self.rel_positions.append(rel_spot_pos)
         
         self.update_plot()
         if len(self.rel_positions) == len(self.abs_angles):
             combined_arrays = np.column_stack((self.abs_angles, self.rel_angles, self.rel_positions, self.est_ds))
-            np.savetxt("Neon_4dps.csv", combined_arrays, delimiter=',')
-            return
+            np.savetxt("Calibration Files/Distance/20250821/1dps_turning.csv", combined_arrays, delimiter=',')
+            self.deleteLater()
         else:
             self.move_to_next_pos()
 
     def manual_button_pressed(self):
         if self.waiting_for_move_fin == False:
-            averager = Spot_Averager(6, camera=self.camera) 
+            averager = Spot_Averager(5, camera=self.camera) 
             averager.done.connect(self.spot_received)
             self.manual_button.hide()
 

@@ -116,7 +116,7 @@ class Backlash_Calibration(QtCore.QObject):
         print(f"saving data. Movements: {movements}, Positions: {self.positions_px}")
         selected_stage = "camera" if self.selected_stage == self.motor.camera_axis else "grating"
         datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        np.savetxt(f"{selected_stage}_{datetime_str}_repeatability_HeNe_zero_centroid.csv", column_stack, delimiter=',')
+        np.savetxt(f"Calibration Files/Backlash/HeNe{selected_stage}_{datetime_str}.csv", column_stack, delimiter=',')
 
 
     def make_serializable(self, data: dict) -> dict:

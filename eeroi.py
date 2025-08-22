@@ -32,6 +32,7 @@ class EE_ROI(pg.CircleROI):
 
 class Half_ROI(pg.CircleROI):
     resized = QtCore.Signal(float)
+    is_locked_to_ee : bool = True
     def __init__(self, pos, size=None, radius=None, movable=False, ee_roi: EE_ROI = None):
         super().__init__(pos, size, radius=radius, movable=movable)
         self.removeHandle(0)
@@ -42,10 +43,17 @@ class Half_ROI(pg.CircleROI):
         return self.size().x()/2
     
     def center_rel_ee(self) -> None:
-        ee_pos_x = self.ee_roi.pos()[0]
-        ee_pos_y = self.ee_roi.pos()[1]
-        ee_rad = self.ee_roi.size().x()/2
-        self.setPos((ee_pos_x + ee_rad - self.radius(), ee_pos_y+ee_rad-self.radius()))
+        if(self.is_locked_to_ee):
+            ee_pos_x = self.ee_roi.pos()[0]
+            ee_pos_y = self.ee_roi.pos()[1]
+            ee_rad = self.ee_roi.size().x()/2
+            self.setPos((ee_pos_x + ee_rad - self.radius(), ee_pos_y+ee_rad-self.radius()))
+    
+    def set_center_pos(self, pos:tuple):
+        x,y = pos[0],pos[1]
+        radius = self.size().x()/2
+        centered_pos = (x-radius, y-radius)
+        self.setPos(centered_pos)
 
     def resize(self, radius: float):
         self.setSize(radius * 2, center=(0.5,0.5))

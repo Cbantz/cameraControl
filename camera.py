@@ -162,7 +162,7 @@ class Camera_Worker(QtCore.QObject):
         self.first_frame.emit()
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.run_live)
-        self.timer.start(50)
+        self.timer.start(75)
 
     def run_live(self):
         self.capture_and_process_frame()

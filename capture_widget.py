@@ -9,9 +9,11 @@ class Capture_Widget(QtWidgets.QWidget):
         self.gridlayout = QtWidgets.QGridLayout()
         self.setLayout(self.gridlayout)
         self.button = QtWidgets.QPushButton("Capture")
+        self.name_edit = QtWidgets.QLineEdit()
         self.folder_select = Folder_Selector()
-        self.gridlayout.addWidget(self.button, 0, 2, 1, 1)
-        self.gridlayout.addWidget(self.folder_select, 0, 0, 1, 2)
+        self.gridlayout.addWidget(self.button, 1, 2, 1, 1)
+        self.gridlayout.addWidget(self.folder_select, 1, 0, 1, 2)
+        self.gridlayout.addWidget(self.name_edit, 0, 0, 1, 2)
 
 
 

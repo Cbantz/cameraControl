@@ -1,6 +1,7 @@
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtWidgets
 from camera import CameraController
+from ee_processor import EE_Processor
 
 class ViewfinderButtons(QtWidgets.QWidget):
     """
@@ -11,7 +12,7 @@ class ViewfinderButtons(QtWidgets.QWidget):
         - Reset ROIs
         - Show/Hide Crosshair
     """
-    def __init__(self, camera: CameraController = None):
+    def __init__(self, camera: CameraController = None, ee_processor : EE_Processor = None):
         super().__init__(parent=None)
         self.hlayout = QtWidgets.QHBoxLayout()
         self.setLayout(self.hlayout)
@@ -26,7 +27,13 @@ class ViewfinderButtons(QtWidgets.QWidget):
             self.hlayout.addWidget(camera.worker.spot_tracker.inner_com_check)
         else:
             print("No Camera connected to Viewfinder Buttons")
+        
+        if ee_processor:
+            self.hlayout.addWidget(ee_processor.worker.use_com_for_half_check)
+        else:
+            print("No EE Processor connected to Viewfinder Buttons")
         self.hlayout.addWidget(self.reset_roi_button)
+
         # self.hlayout.addWidget(self.show_hide_crosshairs_button)
 
 

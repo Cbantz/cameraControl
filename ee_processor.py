@@ -1,5 +1,6 @@
-from pyqtgraph.Qt import QtCore
+from pyqtgraph.Qt import QtCore, QtWidgets
 import numpy as np
+from scipy.ndimage import center_of_mass
 from photutils.aperture import CircularAperture
 from camera import CameraController
 from roi_manager import ROI_Manager
@@ -77,6 +78,7 @@ class Worker(QtCore.QObject):
     ee_ready = QtCore.Signal(float, float, float) # Results of calculations
     half_ready = QtCore.Signal(float) # Results
     completed = QtCore.Signal() # Used to check for a new frame
+    
 
     def __init__(self, roi_manager: ROI_Manager = None, imi: Display_Imi = None, processor: EE_Processor = None):
         super().__init__(parent = None)
@@ -94,6 +96,8 @@ class Worker(QtCore.QObject):
             processor.calc_req.connect(self.calculate_ee)
         else:
             print("No Processor connected to EE Worker")
+
+        self.use_com_for_half_check : QtWidgets.QCheckBox = QtWidgets.QCheckBox("Use COM of Region for Half Calculation")
 
             
 
@@ -114,11 +118,21 @@ class Worker(QtCore.QObject):
         r_min = 1
         r_max = np.shape(roi_region)[0]/2 # Max radius to be searched (half of size(diameter))
 
+
+        roi_pos = self.ee_roi.pos()
+        if self.use_com_for_half_check.isChecked():
+            com = center_of_mass(roi_region)
+            center_point_for_half = (com[1] + roi_pos[0],com[0] + roi_pos[1])
+            self.ee_roi.half_roi.is_locked_to_ee = False
+        else:
+            center_point_for_half = ((np.shape(roi_region)[0]/2) + roi_pos[0], (np.shape(roi_region)[1]/2) + roi_pos[1])
+            self.ee_roi.half_roi.is_locked_to_ee = True
+
         # Calculate half by splitting radius search in half until possible is only one pixel
         while r_max-r_min > 0.01:
             r_mid = (r_max+r_min)/2
-            aperture = CircularAperture((np.shape(roi_region)[0]/2,np.shape(roi_region)[1]/2), r = r_mid)
-            aperture_counts = aperture.do_photometry(roi_region, method='exact')[0]
+            aperture = CircularAperture(center_point_for_half, r = r_mid)
+            aperture_counts = aperture.do_photometry(frame, method='exact')[0]
             if ee != 0:
                 pc_enc = aperture_counts / ee
                 if(pc_enc > 0.5):
@@ -132,6 +146,8 @@ class Worker(QtCore.QObject):
         self.is_busy = False
 
         self.half_ready.emit(r_mid)
+        if self.use_com_for_half_check.isChecked():
+            self.ee_roi.half_roi.set_center_pos(center_point_for_half)
         self.ee_roi.half_roi.resize(r_mid)
         self.ee_ready.emit(ee, ee_pc_enc, total_sum)
         self.completed.emit()
